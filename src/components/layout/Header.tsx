@@ -1,18 +1,20 @@
 import React from 'react';
-import { Search, Bell, Calendar, ChevronDown } from 'lucide-react';
+import { Search, Bell, Calendar, ChevronDown, Menu } from 'lucide-react';
 
 export interface HeaderProps {
   userName?: string;
   userRole?: string;
   userAvatar?: string;
   currentDateText?: string;
+  onToggleMobileSidebar?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   userName = 'Rahul Admin',
   userRole = 'Super Admin',
   userAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-  currentDateText = 'Tue, Apr 23, 2025'
+  currentDateText = 'Tue, Apr 23, 2025',
+  onToggleMobileSidebar
 }) => {
   return (
     <header
@@ -20,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
         height: 52,
         backgroundColor: '#ffffff',
         borderBottom: '1px solid #e2e8f0',
-        padding: '0 20px',
+        padding: '0 14px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -29,36 +31,59 @@ export const Header: React.FC<HeaderProps> = ({
         zIndex: 40
       }}
     >
-      {/* Search Input Bar */}
-      <div style={{ position: 'relative', width: 280 }}>
-        <Search
-          size={14}
-          style={{
-            position: 'absolute',
-            left: 12,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#94a3b8'
-          }}
-        />
-        <input
-          type="text"
-          placeholder="Search anything..."
-          style={{
-            width: '100%',
-            paddingLeft: 34,
-            paddingRight: 12,
-            paddingTop: 6,
-            paddingBottom: 6,
-            fontSize: 12,
-            borderRadius: 999,
-            border: '1px solid #e2e8f0',
-            backgroundColor: '#f8fafc',
-            outline: 'none',
-            fontFamily: 'inherit',
-            transition: 'border-color 0.2s ease'
-          }}
-        />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {onToggleMobileSidebar && (
+          <button
+            type="button"
+            onClick={onToggleMobileSidebar}
+            className="qf-mobile-menu-btn"
+            style={{
+              backgroundColor: '#f1f5f9',
+              border: '1px solid #cbd5e1',
+              borderRadius: 6,
+              padding: '6px',
+              color: '#334155',
+              cursor: 'pointer',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Toggle Menu"
+          >
+            <Menu size={16} />
+          </button>
+        )}
+
+        {/* Search Input Bar */}
+        <div style={{ position: 'relative', width: '100%', maxWidth: 260 }}>
+          <Search
+            size={14}
+            style={{
+              position: 'absolute',
+              left: 12,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#94a3b8'
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Search anything..."
+            style={{
+              width: '100%',
+              paddingLeft: 34,
+              paddingRight: 12,
+              paddingTop: 6,
+              paddingBottom: 6,
+              fontSize: 12,
+              borderRadius: 999,
+              border: '1px solid #e2e8f0',
+              backgroundColor: '#f8fafc',
+              outline: 'none',
+              fontFamily: 'inherit',
+              transition: 'border-color 0.2s ease'
+            }}
+          />
+        </div>
       </div>
 
       {/* Right Header Action Items */}

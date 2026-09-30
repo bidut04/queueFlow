@@ -29,7 +29,7 @@ export const Step5ReviewSubmit: React.FC<Step5ReviewSubmitProps> = ({
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="qf-form-grid-4">
         {/* General Info Summary Card */}
         <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#4f46e5', fontWeight: 800, fontSize: 11.5, marginBottom: 8 }}>

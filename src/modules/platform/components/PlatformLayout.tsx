@@ -64,6 +64,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
   const [activeTab, setActiveTab] = useState<PlatformPageId>(initialUrlState.tab);
   const [selectedOrgId, setSelectedOrgId] = useState<string | undefined>(initialUrlState.orgId);
   const [activeTenantContext, setActiveTenantContext] = useState<Organization | null>(platformStore.activeTenantContext);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -86,6 +87,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
 
   const handleNavigate = (tab: PlatformPageId, orgId?: string) => {
     setActiveTab(tab);
+    setIsMobileSidebarOpen(false);
     if (orgId) {
       setSelectedOrgId(orgId);
     }
@@ -181,11 +183,30 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
       <PlatformHeader
         onSelectTenantContext={handleSelectTenantContext}
         onExitPlatform={onExitPlatform}
+        onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
       />
 
       {/* Main Body with Sidebar + Content */}
       <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
-        <PlatformSidebar activeTab={activeTab} onSelectTab={(t) => handleNavigate(t)} />
+        {/* Desktop Sidebar */}
+        <div className="qf-desktop-sidebar">
+          <PlatformSidebar activeTab={activeTab} onSelectTab={(t) => handleNavigate(t)} />
+        </div>
+
+        {/* Mobile Sidebar Backdrop Drawer */}
+        {isMobileSidebarOpen && (
+          <div
+            className="qf-mobile-drawer-backdrop"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          >
+            <div
+              className="qf-mobile-drawer-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <PlatformSidebar activeTab={activeTab} onSelectTab={(t) => handleNavigate(t)} />
+            </div>
+          </div>
+        )}
 
         <main
           style={{

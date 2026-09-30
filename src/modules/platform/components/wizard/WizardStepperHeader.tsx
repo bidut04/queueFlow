@@ -20,7 +20,7 @@ export const WizardStepperHeader: React.FC<WizardStepperHeaderProps> = ({
 }) => {
   return (
     <div className="qf-card" style={{ padding: '12px 16px', marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+      <div className="qf-stepper-container">
         {steps.map((step, index) => {
           const isCompleted = step.number < currentStep;
           const isCurrent = step.number === currentStep;

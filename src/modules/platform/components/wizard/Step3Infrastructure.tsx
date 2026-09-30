@@ -40,7 +40,7 @@ export const Step3Infrastructure: React.FC<Step3InfrastructureProps> = ({
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+      <div className="qf-form-grid-2">
         {/* Preferred Shard ComboBox */}
         <div>
           <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>

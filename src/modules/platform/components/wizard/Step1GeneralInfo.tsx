@@ -67,7 +67,7 @@ export const Step1GeneralInfo: React.FC<Step1GeneralInfoProps> = ({
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="qf-form-grid-4">
         {/* Organization Name */}
         <div>
           <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>

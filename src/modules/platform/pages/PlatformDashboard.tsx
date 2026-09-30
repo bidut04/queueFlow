@@ -171,7 +171,7 @@ export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigate
       </div>
 
       {/* Top 8 KPI Metric Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))', gap: 6 }}>
+      <div className="qf-kpi-grid">
         {/* Total Orgs */}
         <div className="qf-card" style={{ padding: '6px 8px', borderLeft: '3px solid #4f46e5' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -258,7 +258,7 @@ export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigate
       </div>
 
       {/* Main Grid: Organization Activity & Platform Health */}
-      <div style={{ display: 'grid', gridTemplateColumns: '7fr 5fr', gap: 8 }}>
+      <div className="qf-dashboard-grid">
         {/* Left Column: Organization Activity Table & Summary */}
         <div className="qf-card" style={{ padding: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>

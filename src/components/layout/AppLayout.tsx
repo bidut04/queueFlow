@@ -53,6 +53,7 @@ export const AppLayout: React.FC = () => {
 
   const [activePage, setActivePage] = useState<NavPageId>(getInitialPage);
   const [activeTenantContext, setActiveTenantContext] = useState(platformStore.activeTenantContext);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -62,6 +63,7 @@ export const AppLayout: React.FC = () => {
 
   const handleSelectPage = (pageId: NavPageId) => {
     setActivePage(pageId);
+    setIsMobileSidebarOpen(false);
     const newPath = pageId === 'dashboard' ? '/' : `/${pageId}`;
     if (window.location.pathname !== newPath) {
       window.history.pushState({ pageId }, '', newPath);
@@ -164,12 +166,29 @@ export const AppLayout: React.FC = () => {
         />
       )}
 
-      {/* Fixed Left Sidebar */}
-      <Sidebar activePage={activePage} onSelectPage={handleSelectPage} />
+      {/* Desktop Left Sidebar */}
+      <div className="qf-desktop-sidebar">
+        <Sidebar activePage={activePage} onSelectPage={handleSelectPage} />
+      </div>
+
+      {/* Mobile Sidebar Backdrop Drawer */}
+      {isMobileSidebarOpen && (
+        <div
+          className="qf-mobile-drawer-backdrop"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        >
+          <div
+            className="qf-mobile-drawer-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Sidebar activePage={activePage} onSelectPage={handleSelectPage} />
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="main-wrapper">
-        <Header />
+        <Header onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)} />
         <main className="content-area">
           <div key={activePage} className="qf-page-transition">
             {renderActivePage()}

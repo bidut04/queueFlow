@@ -4,7 +4,8 @@ import {
   Bell,
   Building2,
   ChevronDown,
-  LogOut
+  LogOut,
+  Menu
 } from 'lucide-react';
 import { platformStore } from '../services/platformState';
 import type { Organization } from '../types/platform';
@@ -12,11 +13,13 @@ import type { Organization } from '../types/platform';
 interface PlatformHeaderProps {
   onSelectTenantContext: (orgId: string) => void;
   onExitPlatform: () => void;
+  onToggleMobileSidebar?: () => void;
 }
 
 export const PlatformHeader: React.FC<PlatformHeaderProps> = ({
   onSelectTenantContext,
-  onExitPlatform
+  onExitPlatform,
+  onToggleMobileSidebar
 }) => {
   const [organizations, setOrganizations] = useState<Organization[]>(platformStore.organizations);
   const [currentUser, setCurrentUser] = useState(platformStore.currentUser);
@@ -50,6 +53,26 @@ export const PlatformHeader: React.FC<PlatformHeaderProps> = ({
     >
       {/* Brand & Workspace Title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {onToggleMobileSidebar && (
+          <button
+            type="button"
+            onClick={onToggleMobileSidebar}
+            className="qf-mobile-menu-btn"
+            style={{
+              backgroundColor: '#f1f5f9',
+              border: '1px solid #cbd5e1',
+              borderRadius: 5,
+              padding: '4px',
+              color: '#334155',
+              cursor: 'pointer',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Toggle Navigation Menu"
+          >
+            <Menu size={16} />
+          </button>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div
             style={{

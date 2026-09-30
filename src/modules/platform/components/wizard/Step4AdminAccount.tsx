@@ -37,7 +37,7 @@ export const Step4AdminAccount: React.FC<Step4AdminAccountProps> = ({
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="qf-form-grid-4">
         {/* Admin Name */}
         <div>
           <label style={{ display: 'block', fontSize: 10.5, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
