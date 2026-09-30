@@ -110,7 +110,7 @@ export const ServicesPage: React.FC = () => {
       key: 'name',
       header: 'Service Name',
       sortable: true,
-      accessor: (row) => <span style={{ fontWeight: 800, color: '#0f172a', fontSize: 13 }}>{row.name}</span>
+      accessor: (row) => <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 10.5 }}>{row.name}</span>
     },
     {
       key: 'category',
@@ -132,7 +132,7 @@ export const ServicesPage: React.FC = () => {
       key: 'price',
       header: 'Fee / Price',
       sortable: true,
-      accessor: (row) => <span style={{ fontWeight: 800, color: '#059669', fontSize: 13 }}>{row.price}</span>
+      accessor: (row) => <span style={{ fontWeight: 600, color: '#059669', fontSize: 10.5 }}>{row.price}</span>
     },
     {
       key: 'totalBookingsThisMonth',
@@ -140,7 +140,7 @@ export const ServicesPage: React.FC = () => {
       sortable: true,
       align: 'center',
       accessor: (row) => (
-        <span style={{ fontWeight: 800, color: '#2563eb', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: 6 }}>
+        <span style={{ fontWeight: 600, color: '#2563eb', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: 6 }}>
           {row.totalBookingsThisMonth}
         </span>
       )
