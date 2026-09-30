@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Briefcase,
   Clock,
@@ -17,9 +17,71 @@ import { Button } from '../components/ui/Button';
 import type { TableColumn } from '../types/table';
 import type { Service } from '../types/service';
 import { SERVICES_LIST } from '../data/mockData';
+import {
+  DynamicFilterBar,
+  applyDynamicFilters,
+  type FilterConfigOption,
+  type DynamicFilterValues
+} from '../components/common/DynamicFilterBar';
+
+const filterConfigs: FilterConfigOption[] = [
+  {
+    id: 'search',
+    label: 'Global Search',
+    type: 'search',
+    placeholder: 'Search by service name, user, ticket, date, time, price...'
+  },
+  {
+    id: 'category',
+    label: 'Service Category',
+    type: 'select',
+    options: [
+      { label: 'All Categories', value: 'All' },
+      { label: 'Medical', value: 'Medical' },
+      { label: 'Consultation', value: 'Consultation' },
+      { label: 'Dental', value: 'Dental' },
+      { label: 'Billing', value: 'Billing' },
+      { label: 'VIP', value: 'VIP' }
+    ]
+  },
+  {
+    id: 'status',
+    label: 'Service Status',
+    type: 'select',
+    options: [
+      { label: 'All Statuses', value: 'All' },
+      { label: 'Active', value: 'Active' },
+      { label: 'Inactive', value: 'Inactive' }
+    ]
+  },
+  {
+    id: 'dateRange',
+    label: 'Date Wise Search',
+    type: 'dateRange'
+  },
+  {
+    id: 'timeSlot',
+    label: 'Time Wise Search',
+    type: 'timeSlot'
+  }
+];
 
 export const ServicesPage: React.FC = () => {
   const [services, setServices] = useState<Service[]>(SERVICES_LIST);
+
+  // Dynamic Filter State
+  const [filterValues, setFilterValues] = useState<DynamicFilterValues>({
+    search: '',
+    category: 'All',
+    status: 'All',
+    dateFrom: '',
+    dateTo: '',
+    timeSlot: 'All'
+  });
+
+  const filteredServices = useMemo(() => {
+    return applyDynamicFilters(services, filterValues);
+  }, [services, filterValues]);
 
   // Inline Form Toggle Visibility States
   const [showServiceForm, setShowServiceForm] = useState(false);
@@ -351,13 +413,29 @@ export const ServicesPage: React.FC = () => {
         </div>
       )}
 
+      {/* Global & Dynamic Filter Bar (One Line Compact Bar) */}
+      <DynamicFilterBar
+        variant="inline"
+        configs={filterConfigs}
+        values={filterValues}
+        onChange={setFilterValues}
+        totalResultsCount={services.length}
+        filteredResultsCount={filteredServices.length}
+        quickPresets={[
+          { label: 'All Services', values: { search: '', category: 'All', status: 'All', timeSlot: 'All' } },
+          { label: 'Active Medical', values: { category: 'Medical', status: 'Active' } },
+          { label: 'Consultations', values: { category: 'Consultation' } },
+          { label: 'Morning Slot', values: { timeSlot: 'Morning' } }
+        ]}
+      />
+
       {/* Service Catalog Table */}
       <GlobalTable<Service>
-        data={services}
+        data={filteredServices}
         columns={serviceColumns}
         keyExtractor={(row) => row.id}
         title="Configured Queue Services & Treatment Types"
-        searchPlaceholder="Search by service name or category..."
+        searchPlaceholder="Search by service name, user, ticket, date, time..."
         enableSearch={true}
         enablePagination={true}
       />

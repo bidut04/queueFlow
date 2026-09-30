@@ -45,6 +45,7 @@ export function GlobalTable<T>({
   defaultItemsPerPage = 10,
   onRowClick,
   headerActions,
+  filterBar,
   emptyStateMessage = 'No records found',
   loading = false
 }: GlobalTableProps<T>): ReactNode {
@@ -290,6 +291,13 @@ export function GlobalTable<T>({
           gap: 5
         }}>
           <Check size={12} color="#10b981" /> {toastMessage}
+        </div>
+      )}
+
+      {/* Embedded Dynamic Filter Bar */}
+      {filterBar && (
+        <div className="p-2 border-b border-slate-100 bg-slate-50/30">
+          {filterBar}
         </div>
       )}
 

@@ -29,6 +29,7 @@ export interface GlobalTableProps<T> {
   defaultItemsPerPage?: number;
   onRowClick?: (row: T) => void;
   headerActions?: ReactNode;
+  filterBar?: ReactNode;
   emptyStateMessage?: string;
   loading?: boolean;
 }
