@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ChevronRight, ChevronLeft, CheckCircle2, XCircle } from 'lucide-react';
-import type { PlatformPageId, OrgType } from '../../types/platform';
+import type { PlatformPageId, OrgType, Organization } from '../../types/platform';
 import { platformStore } from '../../services/platformState';
 import { WizardStepperHeader, type WizardStep } from './WizardStepperHeader';
 import { Step1GeneralInfo, type Step1Data } from './Step1GeneralInfo';
@@ -9,12 +9,20 @@ import { Step3Infrastructure, type Step3Data } from './Step3Infrastructure';
 import { Step4AdminAccount, type Step4Data } from './Step4AdminAccount';
 import { Step5ReviewSubmit } from './Step5ReviewSubmit';
 
-interface CreateOrganizationWizardPageProps {
-  onNavigate: (tab: PlatformPageId, orgId?: string) => void;
+export interface CreateOrganizationWizardPageProps {
+  onNavigate?: (tab: PlatformPageId, orgId?: string) => void;
+  mode?: 'SUPER_ADMIN' | 'ORG_ADMIN';
+  initialAdminData?: Partial<Step4Data>;
+  onSuccess?: (newOrg: Organization) => void;
+  onCancel?: () => void;
 }
 
 export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPageProps> = ({
-  onNavigate
+  onNavigate,
+  mode = 'SUPER_ADMIN',
+  initialAdminData,
+  onSuccess,
+  onCancel
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -26,15 +34,15 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
     legalName: '',
     slug: '',
     type: 'BANK',
-    contactEmail: '',
-    contactPhone: '',
+    contactEmail: initialAdminData?.primaryAdminEmail || '',
+    contactPhone: initialAdminData?.primaryAdminPhone || '',
     country: 'United States',
     timezone: 'America/New_York'
   });
 
   // Step 2 State
   const [step2Data, setStep2Data] = useState<Step2Data>({
-    planName: 'Professional',
+    planName: mode === 'ORG_ADMIN' ? 'Free' : 'Professional',
     billingCycle: 'monthly'
   });
 
@@ -47,9 +55,9 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
 
   // Step 4 State
   const [step4Data, setStep4Data] = useState<Step4Data>({
-    primaryAdminName: '',
-    primaryAdminEmail: '',
-    primaryAdminPhone: '',
+    primaryAdminName: initialAdminData?.primaryAdminName || '',
+    primaryAdminEmail: initialAdminData?.primaryAdminEmail || '',
+    primaryAdminPhone: initialAdminData?.primaryAdminPhone || '',
     adminRole: 'TENANT_OWNER',
     enforceMfa: true
   });
@@ -59,7 +67,7 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
     { number: 2, title: 'Plan & Billing', description: 'Tier Selection' },
     { number: 3, title: 'Infrastructure', description: 'Shard Topology' },
     { number: 4, title: 'Tenant Admin', description: 'Initial Credentials' },
-    { number: 5, title: 'Review & Submit', description: 'Provision Org' }
+    { number: 5, title: 'Review & Submit', description: mode === 'ORG_ADMIN' ? 'Submit Application' : 'Provision Org' }
   ];
 
   const validateStep = (stepNum: number): boolean => {
@@ -104,7 +112,8 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
 
     setIsSubmitting(true);
     setTimeout(() => {
-      platformStore.createOrganization({
+      let createdOrg: Organization;
+      const orgPayload = {
         name: step1Data.name,
         legalName: step1Data.legalName,
         slug: step1Data.slug,
@@ -118,11 +127,21 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
         primaryAdminPhone: step4Data.primaryAdminPhone,
         planName: step2Data.planName,
         preferredShardId: step3Data.preferredShardId
-      });
+      };
+
+      if (mode === 'ORG_ADMIN') {
+        createdOrg = platformStore.submitOrganizationRegistration(orgPayload);
+      } else {
+        createdOrg = platformStore.createOrganization(orgPayload);
+      }
 
       setIsSubmitting(false);
-      // Navigate to organizations list or details page
-      onNavigate('organizations');
+
+      if (onSuccess) {
+        onSuccess(createdOrg);
+      } else if (onNavigate) {
+        onNavigate('organizations');
+      }
     }, 600);
   };
 
@@ -133,7 +152,13 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             type="button"
-            onClick={() => onNavigate('organizations')}
+            onClick={() => {
+              if (onCancel) {
+                onCancel();
+              } else if (onNavigate) {
+                onNavigate('organizations');
+              }
+            }}
             style={{
               backgroundColor: '#ffffff',
               border: '1px solid #cbd5e1',
@@ -148,14 +173,16 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
               gap: 4
             }}
           >
-            <ArrowLeft size={13} /> Back to Organizations
+            <ArrowLeft size={13} /> {mode === 'ORG_ADMIN' ? 'Back to Portal' : 'Back to Organizations'}
           </button>
           <div>
             <h1 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              Onboard New Tenant Organization
+              {mode === 'ORG_ADMIN' ? 'Register Your Organization' : 'Onboard New Tenant Organization'}
             </h1>
             <p style={{ fontSize: 10.5, color: '#64748b', margin: '1px 0 0 0' }}>
-              Multi-step enterprise wizard for provisioning company accounts, database shard topology, and primary admin credentials.
+              {mode === 'ORG_ADMIN'
+                ? 'Fill out your company identity, plan, and admin profile. Your submission will be reviewed by Super Admin.'
+                : 'Multi-step enterprise wizard for provisioning company accounts, database shard topology, and primary admin credentials.'}
             </p>
           </div>
         </div>
@@ -218,7 +245,13 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
       <div className="qf-card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button
           type="button"
-          onClick={() => onNavigate('organizations')}
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+            } else if (onNavigate) {
+              onNavigate('organizations');
+            }
+          }}
           style={{
             backgroundColor: '#fef2f2',
             border: '1px solid #fecaca',
@@ -300,7 +333,9 @@ export const CreateOrganizationWizardPage: React.FC<CreateOrganizationWizardPage
               }}
             >
               <CheckCircle2 size={14} />
-              {isSubmitting ? 'Provisioning Organization...' : 'Provision Organization'}
+              {isSubmitting 
+                ? (mode === 'ORG_ADMIN' ? 'Submitting Registration...' : 'Provisioning Organization...') 
+                : (mode === 'ORG_ADMIN' ? 'Submit Registration for Review' : 'Provision Organization')}
             </button>
           )}
         </div>

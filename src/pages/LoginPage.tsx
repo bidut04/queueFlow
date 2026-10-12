@@ -1,28 +1,20 @@
 import React, { useState } from 'react';
-import {
-  Lock,
-  Mail,
-  LogIn,
-  ShieldCheck,
-  Layers3,
-  Activity,
-  KeyRound,
-  CheckCircle2,
-  Sparkles,
-  Eye,
-  EyeOff
-} from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { Eye, EyeOff, Sparkles, Layers3 } from 'lucide-react';
+import { orgAdminAuthStore } from '../modules/platform/services/orgAdminAuthStore';
+import { platformStore } from '../modules/platform/services/platformState';
 
-export const LoginPage: React.FC = () => {
-  const [selectedBranch, setSelectedBranch] = useState<string>('branch_main');
-  const [loginRole, setLoginRole] = useState<'admin' | 'staff' | 'manager'>('admin');
-  const [email, setEmail] = useState('admin@queflow.com');
+interface LoginPageProps {
+  onNavigate?: (pageId: string) => void;
+}
+
+export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('rownok@gmail.com');
   const [password, setPassword] = useState('••••••••••••');
+  const [fullName, setFullName] = useState('Rownok Rahman');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -30,8 +22,17 @@ export const LoginPage: React.FC = () => {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
+  const navigateTo = (path: string) => {
+    const cleanId = path.replace(/^\//, '');
+    if (onNavigate) {
+      onNavigate(cleanId);
+    } else {
+      window.location.href = path;
+    }
+  };
+
   const handleQuickDemo = (role: 'admin' | 'staff' | 'manager') => {
-    setLoginRole(role);
+    setAuthMode('signin');
     if (role === 'admin') {
       setEmail('admin@queflow.com');
       setPassword('admin12345');
@@ -50,441 +51,369 @@ export const LoginPage: React.FC = () => {
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      setIsSubmitted(true);
-      showToast('Authentication Successful! Welcome to QueueFlow.');
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1500);
-    }, 900);
+
+      if (authMode === 'signup') {
+        // First-time Org Admin Registration: Register user and redirect to Tenant Registration
+        orgAdminAuthStore.signUp({
+          name: fullName.trim() || 'Organization Admin',
+          email: email.trim(),
+          phone: '+1 (555) 234-5678',
+          password
+        });
+        showToast('Account registered! Redirecting to tenant organization registration...');
+        setTimeout(() => {
+          navigateTo('/org-portal');
+        }, 800);
+        return;
+      }
+
+      // Sign In Flow: Check if org admin has an existing organization
+      const cleanEmail = email.toLowerCase().trim();
+      const isDefaultStaffDemo = ['admin@queflow.com', 'staff.counter3@queflow.com', 'manager.gulshan@queflow.com'].includes(cleanEmail);
+      const hasAssociatedOrg = platformStore.organizations.some(
+        (o) => o.submittedByEmail?.toLowerCase() === cleanEmail || o.contactEmail?.toLowerCase() === cleanEmail
+      );
+
+      if (!isDefaultStaffDemo && !hasAssociatedOrg) {
+        // Org Admin without tenant organization registered yet -> Redirect to Tenant Registration
+        orgAdminAuthStore.signIn(email, password);
+        showToast('Welcome! Redirecting to tenant organization registration...');
+        setTimeout(() => {
+          navigateTo('/org-portal');
+        }, 800);
+      } else {
+        // Existing Workspace User -> Redirect to Dashboard
+        showToast('Authentication Successful! Welcome to QueueFlow.');
+        setTimeout(() => {
+          navigateTo('/');
+        }, 900);
+      }
+    }, 600);
   };
 
   return (
-    <div style={{
-      width: '100%',
-      minHeight: '82vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '12px 0'
-    }}>
+    <div
+      style={{
+        width: '100%',
+        minHeight: 'calc(100vh - 65px)',
+        display: 'flex',
+        padding: 0,
+        margin: 0,
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Toast Notification */}
       {toastMessage && (
-        <div style={{
-          position: 'fixed',
-          top: 24,
-          right: 24,
-          zIndex: 9999,
-          backgroundColor: '#0f172a',
-          color: '#ffffff',
-          padding: '10px 18px',
-          borderRadius: 10,
-          fontSize: 12,
-          fontWeight: 700,
-          boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          borderLeft: '4px solid #3b82f6'
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 24,
+            right: 24,
+            zIndex: 9999,
+            backgroundColor: '#0f172a',
+            color: '#ffffff',
+            padding: '10px 18px',
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 700,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            borderLeft: '4px solid #2563eb'
+          }}
+        >
           <Sparkles size={16} color="#60a5fa" />
           {toastMessage}
         </div>
       )}
 
-      {/* Main Split-Screen Card */}
-      <div style={{
-        maxWidth: 1080,
-        width: '100%',
-        minHeight: 560,
-        borderRadius: 20,
-        overflow: 'hidden',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 20px 50px rgba(15, 23, 42, 0.1)',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-        backgroundColor: '#ffffff'
-      }}>
-        {/* LEFT HERO PANEL: Queue Management Concept & Realtime Stats */}
-        <div style={{
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 45%, #1e3a8a 100%)',
-          padding: '40px 36px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          color: '#ffffff',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          {/* Subtle Ambient Glow */}
-          <div style={{
-            position: 'absolute',
-            top: '-20%',
-            left: '-20%',
-            width: 320,
-            height: 320,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(59,130,246,0.25) 0%, rgba(0,0,0,0) 70%)',
-            pointerEvents: 'none'
-          }} />
-
-          {/* Top Brand Logo */}
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 12,
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+      {/* Full Width Split-Screen Container with Zero Side Margin */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '100%',
+          margin: 0,
+          backgroundColor: '#ffffff',
+          borderRadius: 0,
+          overflow: 'hidden',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(420px, 480px) 1fr',
+          minHeight: 'calc(100vh - 65px)',
+          border: 'none',
+          boxSizing: 'border-box'
+        }}
+      >
+        {/* Left Form Column */}
+        <div
+          style={{
+            padding: '30px 36px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            borderRight: '1px solid #f1f5f9',
+            backgroundColor: '#ffffff',
+            height: '100%',
+            boxSizing: 'border-box'
+          }}
+        >
+          <div>
+            {/* QueueFlow Brand Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 6px 16px rgba(37,99,235,0.4)'
-                }}>
-                  <Layers3 size={24} color="#ffffff" />
-                </div>
-                <div>
-                  <h1 style={{ fontSize: 20, fontWeight: 900, letterSpacing: '-0.02em', color: '#ffffff', margin: 0 }}>
-                    QueueFlow
-                  </h1>
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#93c5fd', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Enterprise Queue & Counter Hub
-                  </span>
-                </div>
+                  color: '#ffffff',
+                  boxShadow: '0 4px 12px rgba(37,99,235,0.35)'
+                }}
+              >
+                <Layers3 size={17} color="#ffffff" />
               </div>
-
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 10.5,
-                fontWeight: 700,
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                color: '#4ade80',
-                padding: '4px 12px',
-                borderRadius: 9999,
-                backdropFilter: 'blur(4px)'
-              }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#4ade80', display: 'inline-block' }} />
-                Portal Online
+              <span style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.3px' }}>
+                QueueFlow
               </span>
             </div>
 
-            {/* Headline */}
-            <div style={{ marginTop: 28 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.25, color: '#ffffff', margin: 0 }}>
-                Smart Counter Ticketing & Walk-In Operations
-              </h2>
-              <p style={{ fontSize: 12, lineHeight: 1.5, color: '#cbd5e1', marginTop: 8, maxWidth: 440 }}>
-                Sign in to your counter terminal to serve waiting customers, manage token queues, control digital displays, and optimize branch performance.
-              </p>
-            </div>
-
-            {/* 3D QueueFlow Hero Illustration Banner */}
-            <div style={{
-              marginTop: 18,
-              borderRadius: 14,
-              overflow: 'hidden',
-              border: '1px solid rgba(255, 255, 255, 0.18)',
-              boxShadow: '0 12px 30px rgba(0, 0, 0, 0.35)',
-              position: 'relative'
-            }}>
-              <img
-                src="/images/login_hero.jpg"
-                alt="QueueFlow Enterprise Queue Management System"
-                style={{
-                  width: '100%',
-                  height: 165,
-                  objectFit: 'cover',
-                  display: 'block'
-                }}
-              />
-              <div style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                background: 'linear-gradient(to top, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0) 100%)',
-                padding: '10px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <span style={{ fontSize: 10.5, fontWeight: 800, color: '#60a5fa', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Sparkles size={13} color="#60a5fa" /> Smart Counter & Service Points Hub
-                </span>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: '#ffffff', backgroundColor: 'rgba(59,130,246,0.5)', padding: '2px 8px', borderRadius: 4 }}>
-                  Enterprise 3D Hub
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Security Note */}
-          <div style={{ position: 'relative', zIndex: 2, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 14, fontSize: 11, color: '#94a3b8' }}>
-            <span>Secured with 256-bit AES Tokenized Terminal Encryption.</span>
-          </div>
-        </div>
-
-        {/* RIGHT LOGIN FORM PANEL */}
-        <div style={{
-          padding: '40px 38px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          backgroundColor: '#ffffff'
-        }}>
-          <div style={{ maxWidth: 420, width: '100%', margin: '0 auto' }}>
-            {/* Form Title */}
-            <div style={{ marginBottom: 22 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                Sign In to Workspace
-              </h2>
-              <p style={{ fontSize: 12, color: '#64748b', marginTop: 4, margin: 0 }}>
-                Select your branch and role to access your counter dashboard.
-              </p>
-            </div>
-
-            {/* Branch Selector Dropdown */}
+            {/* Heading */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>
-                Operating Branch
-              </label>
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
+              <h1 style={{ fontSize: 23, fontWeight: 800, color: '#0f172a', margin: '0 0 3px 0' }}>
+                {authMode === 'signin' ? 'Welcome Back' : 'Create Account'}
+              </h1>
+              <p style={{ fontSize: 11.5, color: '#64748b', margin: 0 }}>
+                {authMode === 'signin'
+                  ? 'Sign in to access your queue management workspace'
+                  : 'Register to manage token queues and counter operations'}
+              </p>
+            </div>
+
+            {/* Social Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 12 }}>
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('admin')}
                 style={{
                   width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #cbd5e1',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: '#0f172a',
-                  backgroundColor: '#f8fafc',
-                  outline: 'none',
+                  padding: '7px 12px',
+                  borderRadius: 7,
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: '#334155',
                   cursor: 'pointer'
                 }}
               >
-                <option value="branch_main">Main Branch (Dhaka City Center)</option>
-                <option value="branch_gulshan">Gulshan Branch (Road 11)</option>
-                <option value="branch_dhanmondi">Dhanmondi Branch (Satmasjid Rd)</option>
-                <option value="branch_uttara">Uttara Branch (Sector 3)</option>
-                <option value="branch_mirpur">Mirpur Branch (Mirpur 10)</option>
-              </select>
-            </div>
+                <svg width="14" height="14" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                Continue with Google
+              </button>
 
-            {/* Role Selection Tabs */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>
-                Terminal Access Role
-              </label>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: 6,
-                backgroundColor: '#f1f5f9',
-                padding: 4,
-                borderRadius: 8,
-                border: '1px solid #e2e8f0'
-              }}>
-                {[
-                  { id: 'admin', label: 'Super Admin' },
-                  { id: 'staff', label: 'Counter Staff' },
-                  { id: 'manager', label: 'Manager' }
-                ].map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setLoginRole(r.id as 'admin' | 'staff' | 'manager')}
-                    style={{
-                      padding: '6px 0',
-                      borderRadius: 6,
-                      border: 'none',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      backgroundColor: loginRole === r.id ? '#ffffff' : 'transparent',
-                      color: loginRole === r.id ? '#2563eb' : '#64748b',
-                      boxShadow: loginRole === r.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Demo Credentials Bar */}
-            <div style={{
-              backgroundColor: '#eff6ff',
-              border: '1px dashed #bfdbfe',
-              borderRadius: 8,
-              padding: '8px 10px',
-              marginBottom: 16
-            }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: '#1d4ed8', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <KeyRound size={12} color="#2563eb" /> Quick Demo Credentials:
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemo('admin')}
-                  style={{ padding: '3px 8px', borderRadius: 4, backgroundColor: '#ffffff', border: '1px solid #93c5fd', fontSize: 10, fontWeight: 700, color: '#1e40af', cursor: 'pointer' }}
-                >
-                  🔑 Admin Demo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemo('staff')}
-                  style={{ padding: '3px 8px', borderRadius: 4, backgroundColor: '#ffffff', border: '1px solid #93c5fd', fontSize: 10, fontWeight: 700, color: '#1e40af', cursor: 'pointer' }}
-                >
-                  💼 Staff Demo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemo('manager')}
-                  style={{ padding: '3px 8px', borderRadius: 4, backgroundColor: '#ffffff', border: '1px solid #93c5fd', fontSize: 10, fontWeight: 700, color: '#1e40af', cursor: 'pointer' }}
-                >
-                  🏢 Manager Demo
-                </button>
-              </div>
-            </div>
-
-            {/* Success Alert Banner */}
-            {isSubmitted && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                color: '#166534',
-                padding: '10px 14px',
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                marginBottom: 16
-              }}>
-                <CheckCircle2 size={16} color="#16a34a" />
-                <span>Authentication Successful! Redirecting to Dashboard...</span>
-              </div>
-            )}
-
-            {/* Login Inputs Form */}
-            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>
-                  Employee Email / Username <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <div style={{
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('staff')}
+                style={{
+                  width: '100%',
+                  padding: '7px 12px',
+                  borderRadius: 7,
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: 8,
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff'
-                }}>
-                  <Mail size={16} color="#94a3b8" />
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: '#334155',
+                  cursor: 'pointer'
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#1877F2">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                Continue with Facebook
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0 12px 0', gap: 10 }}>
+              <div style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+              <span style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 600 }}>Or</span>
+              <div style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
+            </div>
+
+            {/* Inputs */}
+            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              {authMode === 'signup' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#475569', marginBottom: 2 }}>
+                    Full Name
+                  </label>
                   <input
-                    type="email"
-                    required
-                    placeholder="admin@queflow.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={{
-                      width: '100%',
-                      border: 'none',
-                      outline: 'none',
-                      fontSize: 12.5,
-                      color: '#0f172a',
-                      fontFamily: 'inherit'
-                    }}
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Rownok Rahman"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#475569', marginBottom: 2 }}>
+                  Email or Username
+                </label>
+                <input
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@queflow.com"
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontSize: 12, color: '#0f172a', outline: 'none', boxSizing: 'border-box' }}
+                />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#334155', marginBottom: 5 }}>
-                  Account Password <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#475569', marginBottom: 2 }}>
+                  Password
                 </label>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '9px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff'
-                }}>
-                  <Lock size={16} color="#94a3b8" />
+                <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    required
-                    placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    style={{
-                      width: '100%',
-                      border: 'none',
-                      outline: 'none',
-                      fontSize: 12.5,
-                      color: '#0f172a',
-                      fontFamily: 'inherit'
-                    }}
+                    placeholder="••••••••••••"
+                    style={{ width: '100%', padding: '7px 32px 7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontSize: 12, color: '#0f172a', outline: 'none', boxSizing: 'border-box' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#94a3b8' }}
+                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
               </div>
 
-              {/* Remember Me & Forgot Password */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11.5 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#475569', fontWeight: 600, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 1 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#475569', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ accentColor: '#2563eb', width: 14, height: 14, cursor: 'pointer' }}
+                    style={{ accentColor: '#2563eb' }}
                   />
-                  Remember me on terminal
+                  Remember me
                 </label>
                 <a
                   href="#forgot"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    showToast('Password reset instructions sent to admin email!');
-                  }}
-                  style={{ color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}
+                  onClick={(e) => { e.preventDefault(); showToast('Password reset link sent to registered email.'); }}
+                  style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}
                 >
-                  Forgot password?
+                  Forgot Password?
                 </a>
               </div>
 
-              {/* Submit Button */}
-              <Button
+              {/* Theme Blue Login Button */}
+              <button
                 type="submit"
-                variant="primary"
                 disabled={isSubmitting}
-                icon={isSubmitting ? <Activity size={16} className="animate-spin" /> : <LogIn size={16} />}
-                className="w-full justify-center py-2.5 mt-2"
+                style={{
+                  marginTop: 4,
+                  width: '100%',
+                  padding: '9px 0',
+                  borderRadius: 7,
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: 12.5,
+                  fontWeight: 800,
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                }}
               >
-                {isSubmitting ? 'Verifying Credentials...' : 'Sign In to QueueFlow Workspace'}
-              </Button>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, color: '#94a3b8', fontSize: 11 }}>
-                <ShieldCheck size={14} color="#10b981" />
-                <span>256-bit Encrypted Session</span>
-              </div>
+                {isSubmitting ? 'Authenticating...' : authMode === 'signin' ? 'Sign In to QueueFlow' : 'Create Account'}
+              </button>
             </form>
+
+            {/* Toggle */}
+            <div style={{ textAlign: 'center', marginTop: 10 }}>
+              <span style={{ fontSize: 11, color: '#64748b' }}>
+                {authMode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
+                style={{ background: 'none', border: 'none', fontSize: 11, fontWeight: 800, color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+              >
+                {authMode === 'signin' ? 'Sign Up' : 'Sign In'}
+              </button>
+            </div>
           </div>
+
+          {/* Quick Demo Credentials Bar */}
+          <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 9.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>
+                Quick Demo Credentials:
+              </span>
+              <a
+                href="/org-portal"
+                onClick={(e) => { e.preventDefault(); navigateTo('/org-portal'); }}
+                style={{ fontSize: 10, fontWeight: 800, color: '#2563eb', textDecoration: 'none' }}
+              >
+                Org Admin Portal →
+              </a>
+            </div>
+            <div style={{ display: 'flex', gap: 5 }}>
+              <button type="button" onClick={() => handleQuickDemo('admin')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}>
+                Admin Demo
+              </button>
+              <button type="button" onClick={() => handleQuickDemo('staff')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', cursor: 'pointer' }}>
+                Staff Demo
+              </button>
+              <button type="button" onClick={() => handleQuickDemo('manager')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', cursor: 'pointer' }}>
+                Manager Demo
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Full Height Image matching Form Height with No Side Space */}
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            padding: 0,
+            margin: 0,
+            overflow: 'hidden',
+            backgroundColor: '#f8fafc'
+          }}
+        >
+          <img
+            src="/havenix_building.jpg"
+            alt="QueueFlow Architecture"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              display: 'block'
+            }}
+          />
         </div>
       </div>
     </div>

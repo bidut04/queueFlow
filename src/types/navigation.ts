@@ -16,7 +16,8 @@ export type NavPageId =
   | 'login'
   | 'login-form'
   | 'form-builder'
-  | 'platform';
+  | 'platform'
+  | 'org-portal';
 
 export interface NavSubItem {
   id: NavPageId;

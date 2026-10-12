@@ -16,6 +16,7 @@ import { MigrationsPage } from '../pages/MigrationsPage';
 import { AuditLogsPage } from '../pages/AuditLogsPage';
 import { PlatformSettingsPage } from '../pages/PlatformSettingsPage';
 import { CreateOrganizationWizardPage } from './wizard/CreateOrganizationWizardPage';
+import { RegistrationApprovalsPage } from '../pages/RegistrationApprovalsPage';
 
 interface PlatformLayoutProps {
   onExitPlatform: () => void;
@@ -50,7 +51,8 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
       'shards',
       'migrations',
       'audit',
-      'settings'
+      'settings',
+      'approvals'
     ];
 
     if (validTabs.includes(subRoute as PlatformPageId)) {
@@ -147,6 +149,13 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
         return <MigrationsPage onNavigate={handleNavigate} />;
       case 'audit':
         return <AuditLogsPage />;
+      case 'approvals':
+        return (
+          <RegistrationApprovalsPage
+            onNavigate={handleNavigate}
+            onSelectTenantContext={handleSelectTenantContext}
+          />
+        );
       case 'settings':
         return <PlatformSettingsPage />;
       default:

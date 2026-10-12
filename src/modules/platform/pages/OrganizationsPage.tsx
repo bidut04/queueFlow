@@ -62,6 +62,10 @@ export const OrganizationsPage: React.FC<OrganizationsPageProps> = ({
         return { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' };
       case 'PENDING':
         return { bg: '#fef3c7', color: '#b45309', border: '#fde68a' };
+      case 'HOLD':
+        return { bg: '#ffedd5', color: '#c2410c', border: '#fed7aa' };
+      case 'REJECTED':
+        return { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' };
       case 'ARCHIVED':
         return { bg: '#f3f4f6', color: '#4b5563', border: '#e5e7eb' };
     }
@@ -213,8 +217,10 @@ export const OrganizationsPage: React.FC<OrganizationsPageProps> = ({
       >
         <option value="ALL">All Statuses</option>
         <option value="ACTIVE">ACTIVE</option>
-        <option value="SUSPENDED">SUSPENDED</option>
         <option value="PENDING">PENDING</option>
+        <option value="HOLD">ON HOLD</option>
+        <option value="REJECTED">REJECTED</option>
+        <option value="SUSPENDED">SUSPENDED</option>
         <option value="ARCHIVED">ARCHIVED</option>
       </select>
 
@@ -224,6 +230,7 @@ export const OrganizationsPage: React.FC<OrganizationsPageProps> = ({
         style={{ padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, fontWeight: 600, color: '#334155' }}
       >
         <option value="ALL">All Plans</option>
+        <option value="Free">Free</option>
         <option value="Starter">Starter</option>
         <option value="Professional">Professional</option>
         <option value="Enterprise">Enterprise</option>
@@ -261,8 +268,43 @@ export const OrganizationsPage: React.FC<OrganizationsPageProps> = ({
     </div>
   );
 
+  const pendingCount = organizations.filter((o) => o.status === 'PENDING').length;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {pendingCount > 0 && (
+        <div
+          style={{
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 8,
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#92400e', fontSize: 12, fontWeight: 700 }}>
+            <span>⚠️ There are <strong>{pendingCount}</strong> self-registered organizations awaiting Super Admin review and approval.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate('approvals')}
+            style={{
+              backgroundColor: '#d97706',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 5,
+              padding: '5px 12px',
+              fontSize: 11.5,
+              fontWeight: 800,
+              cursor: 'pointer'
+            }}
+          >
+            Open Approvals Queue →
+          </button>
+        </div>
+      )}
       <GlobalTable<Organization>
         data={filteredOrganizations}
         columns={columns}

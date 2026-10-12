@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
     subItems: [
       { id: 'master-booking-form', label: 'Booking Form', iconName: 'master-booking-form' },
       { id: 'form-builder', label: 'Form Builder', iconName: 'form-builder' },
+      { id: 'org-portal', label: 'Org Admin Portal', iconName: 'org-portal' },
       { id: 'login', label: 'Login Portal', iconName: 'login' },
       { id: 'login-form', label: 'Login Form', iconName: 'login-form' },
       { id: 'roles', label: 'Role', iconName: 'roles' },
@@ -107,6 +108,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
       case 'login':
       case 'login-form':
         return <Lock size={size} />;
+      case 'org-portal':
+        return <Building2 size={size} color="#818cf8" />;
       case 'tickets':
         return <Ticket size={size} />;
       case 'queue':

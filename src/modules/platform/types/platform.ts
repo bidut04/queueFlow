@@ -1,4 +1,6 @@
-export type OrgStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING' | 'ARCHIVED';
+export type OrgStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING' | 'HOLD' | 'REJECTED' | 'ARCHIVED';
+
+export type RegistrationStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'HOLD' | 'REJECTED';
 
 export type OrgType = 
   | 'BANK' 
@@ -58,6 +60,28 @@ export interface Organization {
   primaryAdminName: string;
   primaryAdminEmail: string;
   primaryAdminPhone?: string;
+  registrationStatus?: RegistrationStatus;
+  remarks?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  submittedByEmail?: string;
+}
+
+export interface RegisterOrgInput {
+  name: string;
+  legalName?: string;
+  slug?: string;
+  type: OrgType;
+  contactEmail: string;
+  contactPhone: string;
+  country: string;
+  timezone: string;
+  primaryAdminName: string;
+  primaryAdminEmail: string;
+  primaryAdminPhone?: string;
+  planName: string;
+  preferredShardId?: string;
+  adminPassword?: string;
 }
 
 export interface TenantAdmin {
@@ -192,4 +216,5 @@ export type PlatformPageId =
   | 'shards'
   | 'migrations'
   | 'audit'
-  | 'settings';
+  | 'settings'
+  | 'approvals';

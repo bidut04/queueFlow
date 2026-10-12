@@ -22,6 +22,7 @@ import { EmployeeDepartmentAssociationPage } from '../../pages/EmployeeDepartmen
 import { PlatformLayout } from '../../modules/platform/components/PlatformLayout';
 import { platformStore } from '../../modules/platform/services/platformState';
 import { TenantContextBanner } from '../../modules/platform/components/TenantContextBanner';
+import { OrgAdminPortalPage } from '../../pages/OrgAdminPortalPage';
 
 export const AppLayout: React.FC = () => {
   // Read clean initial page from URL path e.g. /platform or /bookings
@@ -46,7 +47,8 @@ export const AppLayout: React.FC = () => {
       'tickets',
       'queue',
       'reports',
-      'settings'
+      'settings',
+      'org-portal'
     ];
     return validPages.includes(pathname as NavPageId) ? (pathname as NavPageId) : 'dashboard';
   };
@@ -94,7 +96,8 @@ export const AppLayout: React.FC = () => {
         'tickets',
         'queue',
         'reports',
-        'settings'
+        'settings',
+        'org-portal'
       ];
       setActivePage(validPages.includes(pathname as NavPageId) ? (pathname as NavPageId) : 'dashboard');
     };
@@ -124,7 +127,14 @@ export const AppLayout: React.FC = () => {
       case 'form-builder':
         return <FormBuilderPage />;
       case 'login':
-        return <LoginPage />;
+        return <LoginPage onNavigate={(pageId) => handleSelectPage(pageId as NavPageId)} />;
+      case 'org-portal':
+        return (
+          <OrgAdminPortalPage
+            onNavigateToSuperAdmin={() => handleSelectPage('platform')}
+            onEnterTenantDashboard={() => handleSelectPage('dashboard')}
+          />
+        );
       case 'login-form':
         return <LoginFormPage />;
       case 'roles':
@@ -170,7 +180,16 @@ export const AppLayout: React.FC = () => {
       {/* Main Content Area */}
       <div className="main-wrapper">
         <Header />
-        <main className="content-area">
+        <main
+          className="content-area"
+          style={
+            activePage === 'login'
+              ? { padding: 0, maxWidth: '100%', margin: 0, width: '100%' }
+              : activePage === 'org-portal'
+              ? { padding: '10px 14px', maxWidth: '100%', margin: 0 }
+              : undefined
+          }
+        >
           <div key={activePage} className="qf-page-transition">
             {renderActivePage()}
           </div>

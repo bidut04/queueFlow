@@ -69,10 +69,14 @@ export const Step2SubscriptionPlan: React.FC<Step2SubscriptionPlanProps> = ({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
         {plans.map((plan) => {
           const isSelected = data.planName === plan.name;
-          const monthlyPrice = data.billingCycle === 'annual' ? Math.round(plan.priceMonthly * 0.8) : plan.priceMonthly;
+          const monthlyPrice = plan.priceMonthly === 0 
+            ? 0 
+            : data.billingCycle === 'annual' 
+              ? Math.round(plan.priceMonthly * 0.8) 
+              : plan.priceMonthly;
 
           return (
             <div
@@ -91,6 +95,25 @@ export const Step2SubscriptionPlan: React.FC<Step2SubscriptionPlanProps> = ({
                 position: 'relative'
               }}
             >
+              {plan.name === 'Free' && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -10,
+                    right: 12,
+                    backgroundColor: '#10b981',
+                    color: '#ffffff',
+                    fontSize: 9,
+                    fontWeight: 800,
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    letterSpacing: '0.4px',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  Free Forever
+                </span>
+              )}
               {plan.name === 'Professional' && (
                 <span
                   style={{
@@ -126,8 +149,12 @@ export const Step2SubscriptionPlan: React.FC<Step2SubscriptionPlanProps> = ({
                 </div>
 
                 <div style={{ margin: '10px 0 12px 0' }}>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>${monthlyPrice}</span>
-                  <span style={{ fontSize: 10.5, color: '#64748b' }}> / mo</span>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>
+                    ${monthlyPrice}
+                  </span>
+                  <span style={{ fontSize: 10.5, color: '#64748b' }}>
+                    {plan.priceMonthly === 0 ? ' (No card required)' : ' / mo'}
+                  </span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 10.5, color: '#475569', marginBottom: 12 }}>

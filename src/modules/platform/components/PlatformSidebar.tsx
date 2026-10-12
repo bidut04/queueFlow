@@ -8,9 +8,11 @@ import {
   Database,
   ArrowLeftRight,
   ShieldCheck,
-  Settings
+  Settings,
+  ClipboardCheck
 } from 'lucide-react';
 import type { PlatformPageId } from '../types/platform';
+import { platformStore } from '../services/platformState';
 
 interface PlatformSidebarProps {
   activeTab: PlatformPageId;
@@ -21,9 +23,12 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
   activeTab,
   onSelectTab
 }) => {
+  const pendingCount = platformStore.organizations.filter((o) => o.status === 'PENDING').length;
+
   const navItems = [
     { id: 'overview' as PlatformPageId, label: 'Overview', icon: LayoutDashboard },
     { id: 'organizations' as PlatformPageId, label: 'Organizations', icon: Building2 },
+    { id: 'approvals' as PlatformPageId, label: 'Registration Approvals', icon: ClipboardCheck, badge: pendingCount },
     { id: 'users' as PlatformPageId, label: 'Platform Users', icon: Users2 },
     { id: 'subscriptions' as PlatformPageId, label: 'Subscriptions / Plans', icon: CreditCard },
     { id: 'system-health' as PlatformPageId, label: 'System Health', icon: Activity },
@@ -66,7 +71,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 10,
+                  justifyContent: 'space-between',
                   width: '100%',
                   padding: '7px 10px',
                   borderRadius: 6,
@@ -92,8 +97,25 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                   }
                 }}
               >
-                <Icon size={16} color={isActive ? '#818cf8' : '#64748b'} />
-                <span>{item.label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon size={16} color={isActive ? '#818cf8' : '#64748b'} />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && item.badge > 0 ? (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      backgroundColor: '#f59e0b',
+                      color: '#ffffff',
+                      borderRadius: 10,
+                      padding: '1px 6px',
+                      lineHeight: '14px'
+                    }}
+                  >
+                    {item.badge}
+                  </span>
+                ) : null}
               </button>
             );
           })}

@@ -250,7 +250,41 @@ export const MOCK_ORGANIZATIONS: Organization[] = [
     logoUrl: 'https://images.unsplash.com/photo-1562774053-701939374585?w=100&auto=format&fit=crop&q=80',
     primaryAdminName: 'Prof. Robert Hughes',
     primaryAdminEmail: 'rhughes@pacificfed.edu',
-    primaryAdminPhone: '+1 (555) 901-2346'
+    primaryAdminPhone: '+1 (555) 901-2346',
+    registrationStatus: 'PENDING_APPROVAL',
+    submittedByEmail: 'rhughes@pacificfed.edu'
+  },
+  {
+    id: 'org-108',
+    name: 'Apex Health Clinic',
+    legalName: 'Apex Health Services LLC',
+    slug: 'apex-health-clinic',
+    type: 'CLINIC',
+    status: 'HOLD',
+    plan: 'Free',
+    subscriptionState: 'TRIAL',
+    contactEmail: 'admin@apexhealth.org',
+    contactPhone: '+1 (555) 441-9988',
+    country: 'United States',
+    timezone: 'America/New_York',
+    branchesCount: 1,
+    usersCount: 3,
+    employeesCount: 6,
+    servicesCount: 2,
+    activeQueuesCount: 1,
+    monthlyBookingsCount: 180,
+    currentShard: 'shard-us-east-1a',
+    region: 'us-east-1',
+    createdDate: '2026-10-01',
+    lastActivity: '1 day ago',
+    primaryAdminName: 'Dr. Clara Vance',
+    primaryAdminEmail: 'clara@apexhealth.org',
+    primaryAdminPhone: '+1 (555) 441-9989',
+    registrationStatus: 'HOLD',
+    remarks: 'Please upload clinic operating license and proof of registration.',
+    reviewedBy: 'Alexander Wright',
+    reviewedAt: '2026-10-02 11:30 AM',
+    submittedByEmail: 'clara@apexhealth.org'
   },
   {
     id: 'org-107',
@@ -393,6 +427,23 @@ export const MOCK_PLATFORM_USERS: PlatformUser[] = [
 ];
 
 export const MOCK_SUBSCRIPTION_PLANS: PlatformSubscriptionPlan[] = [
+  {
+    id: 'plan-free',
+    name: 'Free',
+    priceMonthly: 0,
+    activeOrgsCount: 18,
+    maxBranches: 1,
+    maxUsers: 5,
+    maxBookingsMonthly: 500,
+    features: [
+      '1 Branch Location & 1 Counter',
+      'Basic Ticket Generation',
+      'Up to 5 Staff Users',
+      'Email Notifications',
+      'Community & Forum Support',
+      'Shared Multi-tenant Shard Ring'
+    ]
+  },
   {
     id: 'plan-starter',
     name: 'Starter',

@@ -8,7 +8,8 @@ import type {
   TenantMigrationJob,
   PlatformAuditLog,
   PlatformSettings,
-  OrgType
+  OrgType,
+  RegisterOrgInput
 } from '../types/platform';
 import {
   MOCK_ORGANIZATIONS,
@@ -163,6 +164,183 @@ class PlatformStore {
 
     this.notify();
     return newOrg;
+  }
+
+  // --- SELF-SERVICE ORGANIZATION REGISTRATION ---
+  public submitOrganizationRegistration(data: RegisterOrgInput): Organization {
+    const writableShards = this.shards.filter((s) => !s.readOnly && s.status === 'HEALTHY');
+    const selectedShard = data.preferredShardId
+      ? this.shards.find((s) => s.id === data.preferredShardId) || writableShards[0]
+      : writableShards.sort((a, b) => a.utilizationPercent - b.utilizationPercent)[0] || this.shards[0];
+
+    const newOrgId = `org-${Date.now().toString().slice(-4)}`;
+    const newOrg: Organization = {
+      id: newOrgId,
+      name: data.name,
+      legalName: data.legalName || data.name,
+      slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
+      type: data.type,
+      status: 'PENDING',
+      registrationStatus: 'PENDING_APPROVAL',
+      plan: data.planName || 'Free',
+      subscriptionState: 'TRIAL',
+      contactEmail: data.contactEmail,
+      contactPhone: data.contactPhone,
+      country: data.country,
+      timezone: data.timezone,
+      branchesCount: 1,
+      usersCount: 1,
+      employeesCount: 2,
+      servicesCount: 2,
+      activeQueuesCount: 1,
+      monthlyBookingsCount: 0,
+      currentShard: selectedShard.id,
+      region: selectedShard.region.split(' ')[0],
+      createdDate: new Date().toISOString().split('T')[0],
+      lastActivity: 'Just now',
+      primaryAdminName: data.primaryAdminName,
+      primaryAdminEmail: data.primaryAdminEmail,
+      primaryAdminPhone: data.primaryAdminPhone,
+      submittedByEmail: data.primaryAdminEmail
+    };
+
+    this.organizations = [newOrg, ...this.organizations];
+
+    const primaryAdmin: TenantAdmin = {
+      id: `tadmin-${Date.now().toString().slice(-4)}`,
+      organizationId: newOrg.id,
+      organizationName: newOrg.name,
+      name: data.primaryAdminName,
+      email: data.primaryAdminEmail,
+      phone: data.primaryAdminPhone || data.contactPhone,
+      role: 'TENANT_OWNER',
+      status: 'SUSPENDED', // will become active upon approval
+      lastLogin: 'Never',
+      createdDate: new Date().toISOString().split('T')[0]
+    };
+    this.tenantAdmins = [primaryAdmin, ...this.tenantAdmins];
+
+    this.addAuditLog({
+      actor: data.primaryAdminName,
+      actorRole: 'TENANT_OWNER',
+      action: 'ORGANIZATION_REGISTRATION_SUBMITTED',
+      organizationId: newOrg.id,
+      organizationName: newOrg.name,
+      resource: 'Organization',
+      resourceId: newOrg.id,
+      result: 'SUCCESS',
+      reason: `Self-registration submitted with plan ${data.planName}. Awaiting Super Admin review.`
+    });
+
+    this.notify();
+    return newOrg;
+  }
+
+  // --- PERMISSION & APPROVAL WORKFLOWS ---
+  public approveRegistration(orgId: string, remarks?: string): void {
+    const org = this.organizations.find((o) => o.id === orgId);
+    if (!org) return;
+
+    org.status = 'ACTIVE';
+    org.registrationStatus = 'APPROVED';
+    org.subscriptionState = 'ACTIVE';
+    org.remarks = remarks || 'Approved by Super Admin';
+    org.reviewedBy = this.currentUser.name;
+    org.reviewedAt = new Date().toLocaleString();
+    org.lastActivity = 'Just now';
+
+    // Activate associated tenant admins
+    this.tenantAdmins.forEach((adm) => {
+      if (adm.organizationId === orgId) {
+        adm.status = 'ACTIVE';
+      }
+    });
+
+    // Update shard tenant capacity
+    const shard = this.shards.find((s) => s.id === org.currentShard);
+    if (shard) {
+      shard.tenantCount += 1;
+      shard.utilizationPercent = Math.min(
+        100,
+        Math.round((shard.tenantCount / shard.capacityTenants) * 100)
+      );
+    }
+
+    this.addAuditLog({
+      actor: this.currentUser.name,
+      actorRole: this.currentUser.role,
+      action: 'ORGANIZATION_APPROVED',
+      organizationId: org.id,
+      organizationName: org.name,
+      resource: 'Organization',
+      resourceId: org.id,
+      result: 'SUCCESS',
+      reason: remarks ? `Approved: ${remarks}` : 'Approved by Super Admin'
+    });
+
+    this.notify();
+  }
+
+  public holdRegistration(orgId: string, remarks: string): void {
+    const org = this.organizations.find((o) => o.id === orgId);
+    if (!org) return;
+
+    org.status = 'HOLD';
+    org.registrationStatus = 'HOLD';
+    org.remarks = remarks;
+    org.reviewedBy = this.currentUser.name;
+    org.reviewedAt = new Date().toLocaleString();
+    org.lastActivity = 'Just now';
+
+    this.addAuditLog({
+      actor: this.currentUser.name,
+      actorRole: this.currentUser.role,
+      action: 'ORGANIZATION_PUT_ON_HOLD',
+      organizationId: org.id,
+      organizationName: org.name,
+      resource: 'Organization',
+      resourceId: org.id,
+      result: 'SUCCESS',
+      reason: `Put on hold: ${remarks}`
+    });
+
+    this.notify();
+  }
+
+  public rejectRegistration(orgId: string, remarks: string): void {
+    const org = this.organizations.find((o) => o.id === orgId);
+    if (!org) return;
+
+    org.status = 'REJECTED';
+    org.registrationStatus = 'REJECTED';
+    org.remarks = remarks;
+    org.reviewedBy = this.currentUser.name;
+    org.reviewedAt = new Date().toLocaleString();
+    org.lastActivity = 'Just now';
+
+    this.addAuditLog({
+      actor: this.currentUser.name,
+      actorRole: this.currentUser.role,
+      action: 'ORGANIZATION_REJECTED',
+      organizationId: org.id,
+      organizationName: org.name,
+      resource: 'Organization',
+      resourceId: org.id,
+      result: 'SUCCESS',
+      reason: `Rejected: ${remarks}`
+    });
+
+    this.notify();
+  }
+
+  public updateOrganizationRemarks(orgId: string, remarks: string): void {
+    const org = this.organizations.find((o) => o.id === orgId);
+    if (!org) return;
+
+    org.remarks = remarks;
+    org.reviewedBy = this.currentUser.name;
+    org.reviewedAt = new Date().toLocaleString();
+    this.notify();
   }
 
   public suspendOrganization(orgId: string, reason: string) {
