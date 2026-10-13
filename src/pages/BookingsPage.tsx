@@ -77,6 +77,7 @@ export const BookingsPage: React.FC = () => {
       key: 'customerName',
       header: 'Customer Name',
       sortable: true,
+      width: '220px',
       accessor: (row) => (
         <CustomerCell
           name={row.customerName}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import {
   useReactTable,
@@ -113,6 +113,7 @@ export function GlobalTable<T>({
       const colDef: ColumnDef<T, unknown> = {
         id: col.key,
         header: col.header,
+        size: col.width ? parseInt(String(col.width).replace('px', ''), 10) : undefined,
         enableSorting: col.sortable ?? true,
         accessorFn: (row: T) => {
           const record = row as Record<string, unknown>;
@@ -247,28 +248,46 @@ export function GlobalTable<T>({
     printWindow.print();
   };
 
-  const toggleSelectAll = (checked: boolean) => {
-    const newSelected: Record<string, boolean> = {};
-    if (checked) {
-      data.forEach((row) => {
-        const key = keyExtractor ? keyExtractor(row) : (row as Record<string, unknown>).id as string;
-        if (key) newSelected[key] = true;
-      });
+  const pageRows = table.getRowModel().rows;
+  const pageRowKeys = useMemo(() => {
+    return pageRows.map((r) => (keyExtractor ? keyExtractor(r.original) : r.id));
+  }, [pageRows, keyExtractor]);
+
+  const selectedCountOnPage = pageRowKeys.filter((k) => selectedRows[k]).length;
+  const isAllPageSelected = pageRowKeys.length > 0 && selectedCountOnPage === pageRowKeys.length;
+  const isIndeterminate = selectedCountOnPage > 0 && !isAllPageSelected;
+
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isIndeterminate;
     }
-    setSelectedRows(newSelected);
+  }, [isIndeterminate]);
+
+  const toggleSelectAll = (checked: boolean) => {
+    const next = { ...selectedRows };
+    pageRowKeys.forEach((key) => {
+      if (checked) {
+        next[key] = true;
+      } else {
+        delete next[key];
+      }
+    });
+    setSelectedRows(next);
   };
 
   const toggleSelectRow = (key: string) => {
-    setSelectedRows((prev) => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    setSelectedRows((prev) => {
+      const next = { ...prev };
+      if (next[key]) {
+        delete next[key];
+      } else {
+        next[key] = true;
+      }
+      return next;
+    });
   };
-
-  const isAllSelected = data.length > 0 && data.every((row) => {
-    const key = keyExtractor ? keyExtractor(row) : (row as Record<string, unknown>).id as string;
-    return selectedRows[key];
-  });
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden relative w-full flex flex-col max-h-[calc(100vh-175px)]">
@@ -450,12 +469,27 @@ export function GlobalTable<T>({
             <thead>
               {table.getHeaderGroups().map((headerGroup: HeaderGroup<T>) => (
                 <tr key={headerGroup.id}>
-                  <th style={{ width: 32, textAlign: 'center', paddingLeft: 10 }}>
+                  <th
+                    style={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 20,
+                      backgroundColor: '#f8fafc',
+                      width: 38,
+                      minWidth: 38,
+                      textAlign: 'center',
+                      padding: '8px 10px',
+                      borderBottom: '1.5px solid #e2e8f0',
+                      boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)'
+                    }}
+                  >
                     <input
+                      ref={headerCheckboxRef}
                       type="checkbox"
-                      checked={isAllSelected}
+                      checked={isAllPageSelected}
                       onChange={(e) => toggleSelectAll(e.target.checked)}
-                      style={{ width: 12, height: 12, cursor: 'pointer', accentColor: '#2563eb' }}
+                      style={{ width: 13, height: 13, cursor: 'pointer', accentColor: '#2563eb' }}
+                      title={isAllPageSelected ? 'Deselect all rows' : 'Select all rows on this page'}
                     />
                   </th>
 
@@ -475,12 +509,16 @@ export function GlobalTable<T>({
                         onClick={header.column.getToggleSortingHandler()}
                         title={canSort ? `Click to sort • Drag to reorder column` : 'Drag to reorder column'}
                         style={{
-                          position: 'relative',
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 10,
                           cursor: canSort ? 'pointer' : 'grab',
                           textAlign: customCol?.align || 'left',
                           width: header.getSize() || customCol?.width,
                           color: isSorted ? '#2563eb' : '#475569',
-                          backgroundColor: isDragging ? '#e0e7ff' : isSorted ? '#f0f9ff' : 'transparent',
+                          backgroundColor: isDragging ? '#e0e7ff' : isSorted ? '#eff6ff' : '#f8fafc',
+                          borderBottom: '1.5px solid #e2e8f0',
+                          boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
                           fontWeight: isSorted ? 700 : 600,
                           opacity: isDragging ? 0.6 : 1,
                           userSelect: 'none'
@@ -585,12 +623,16 @@ export function GlobalTable<T>({
                         backgroundColor: isChecked ? '#f0f9ff' : 'transparent'
                       }}
                     >
-                      <td style={{ width: 32, textAlign: 'center', paddingLeft: 10 }}>
+                      <td style={{ width: 38, textAlign: 'center', padding: '8px 10px' }}>
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          onChange={() => toggleSelectRow(rowKey)}
-                          style={{ width: 12, height: 12, cursor: 'pointer', accentColor: '#2563eb' }}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleSelectRow(rowKey);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ width: 13, height: 13, cursor: 'pointer', accentColor: '#2563eb' }}
                         />
                       </td>
 

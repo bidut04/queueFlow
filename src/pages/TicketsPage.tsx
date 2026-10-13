@@ -34,6 +34,7 @@ export const TicketsPage: React.FC = () => {
       key: 'customerName',
       header: 'Patient / Customer',
       sortable: true,
+      width: '220px',
       accessor: (row) => (
         <CustomerCell
           name={row.customerName}

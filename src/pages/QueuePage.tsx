@@ -19,6 +19,7 @@ export const QueuePage: React.FC = () => {
       key: 'customerName',
       header: 'Customer',
       sortable: true,
+      width: '220px',
       accessor: (row) => (
         <CustomerCell
           name={row.customerName}

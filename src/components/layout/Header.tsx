@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, Bell, Calendar, ChevronDown } from 'lucide-react';
+import { Search, Bell, Calendar, ChevronDown, PanelLeft } from 'lucide-react';
+import { Tooltip } from '../ui/tooltip';
 
 export interface HeaderProps {
   userName?: string;
@@ -11,7 +12,7 @@ export interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   userName = 'Rahul Admin',
   userRole = 'Super Admin',
-  userAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+  userAvatar = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
   currentDateText = 'Tue, Apr 23, 2025'
 }) => {
   return (
@@ -29,8 +30,40 @@ export const Header: React.FC<HeaderProps> = ({
         zIndex: 40
       }}
     >
-      {/* Search Input Bar */}
-      <div style={{ position: 'relative', width: 280 }}>
+      {/* Left Area: Sidebar Toggle + Search */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Tooltip content="Toggle sidebar (Ctrl+B)" side="bottom">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('qf-toggle-sidebar'))}
+            aria-label="Toggle sidebar"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: '1px solid #e2e8f0',
+              backgroundColor: '#f8fafc',
+              color: '#475569',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#e2e8f0';
+              e.currentTarget.style.color = '#0f172a';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#f8fafc';
+              e.currentTarget.style.color = '#475569';
+            }}
+          >
+            <PanelLeft size={16} />
+          </button>
+        </Tooltip>
+
+        {/* Search Input Bar */}
+        <div style={{ position: 'relative', width: 280 }}>
         <Search
           size={14}
           style={{
@@ -59,6 +92,7 @@ export const Header: React.FC<HeaderProps> = ({
             transition: 'border-color 0.2s ease'
           }}
         />
+        </div>
       </div>
 
       {/* Right Header Action Items */}

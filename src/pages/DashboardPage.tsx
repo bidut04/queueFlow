@@ -41,6 +41,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       key: 'customerName',
       header: 'Customer',
       sortable: true,
+      width: '220px',
       accessor: (row) => (
         <CustomerCell
           name={row.customerName}
