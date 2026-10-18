@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { platformStore } from '../services/platformState';
 import type { Organization } from '../types/platform';
+import { authApi } from '../../../api/auth.api';
 
 interface PlatformHeaderProps {
   onSelectTenantContext: (orgId: string) => void;
@@ -315,8 +316,39 @@ export const PlatformHeader: React.FC<PlatformHeaderProps> = ({
             e.currentTarget.style.backgroundColor = '#ffffff';
           }}
         >
-          <LogOut size={12} />
+          <Building2 size={12} />
           Tenant App
+        </button>
+
+        {/* Super Admin Log Out Button */}
+        <button
+          onClick={() => authApi.logout()}
+          title="Sign out of Super Admin"
+          style={{
+            backgroundColor: '#fef2f2',
+            color: '#dc2626',
+            border: '1px solid #fee2e2',
+            borderRadius: 5,
+            padding: '3px 8px',
+            fontSize: 10.5,
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            transition: 'all 0.15s ease',
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = '#fee2e2';
+            e.currentTarget.style.borderColor = '#fecaca';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = '#fef2f2';
+            e.currentTarget.style.borderColor = '#fee2e2';
+          }}
+        >
+          <LogOut size={12} color="#dc2626" />
+          Log Out
         </button>
       </div>
     </header>

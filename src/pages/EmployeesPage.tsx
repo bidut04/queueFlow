@@ -19,7 +19,12 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import type { TableColumn } from '../types/table';
 import type { Employee } from '../types/employee';
-import { INITIAL_EMPLOYEES } from '../data/mockEmployees';
+import {
+  useEmployees,
+  useCreateEmployee,
+  useUpdateEmployee,
+  useDeleteEmployee,
+} from '../api/hooks/employeeHooks';
 
 const DEFAULT_AVATARS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
@@ -30,7 +35,10 @@ const DEFAULT_AVATARS = [
 ];
 
 export const EmployeesPage: React.FC = () => {
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+  const { data: employees = [], isLoading } = useEmployees();
+  const createEmployeeMutation = useCreateEmployee();
+  const updateEmployeeMutation = useUpdateEmployee();
+  const deleteEmployeeMutation = useDeleteEmployee();
 
   // Inline Form Toggle Visibility States
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
@@ -100,21 +108,13 @@ export const EmployeesPage: React.FC = () => {
     if (!employeeForm.name.trim() || !employeeForm.email.trim()) return;
 
     if (editingEmployee) {
-      setEmployees((prev) =>
-        prev.map((emp) =>
-          emp.id === editingEmployee.id
-            ? { ...emp, ...employeeForm }
-            : emp
-        )
-      );
+      updateEmployeeMutation.mutate({
+        id: editingEmployee.id,
+        ...employeeForm
+      });
       showToast(`Employee "${employeeForm.name}" updated successfully!`);
     } else {
-      const newEmp: Employee = {
-        id: `emp-${Date.now()}`,
-        ...employeeForm,
-        joinedDate: new Date().toISOString().split('T')[0]
-      };
-      setEmployees((prev) => [newEmp, ...prev]);
+      createEmployeeMutation.mutate(employeeForm);
       showToast(`New Employee ID "${employeeForm.employeeId}" created successfully!`);
     }
     setShowEmployeeForm(false);
@@ -123,7 +123,7 @@ export const EmployeesPage: React.FC = () => {
 
   const handleDeleteEmployee = (id: string, name: string) => {
     if (confirm(`Are you sure you want to remove employee ${name}?`)) {
-      setEmployees((prev) => prev.filter((e) => e.id !== id));
+      deleteEmployeeMutation.mutate(id);
       showToast(`Employee "${name}" deleted.`);
     }
   };
@@ -483,6 +483,7 @@ export const EmployeesPage: React.FC = () => {
         data={employees}
         columns={columns}
         keyExtractor={(row) => row.id}
+        loading={isLoading}
         title="Registered Employee Directory & ID Catalog"
         searchPlaceholder="Search by employee ID, name, role or department..."
         enableSearch={true}

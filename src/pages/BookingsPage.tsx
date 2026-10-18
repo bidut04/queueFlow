@@ -7,7 +7,7 @@ import { Combobox } from '../components/ui/Combobox';
 import { CustomerCell } from '../components/ui/CustomerCell';
 import type { TableColumn } from '../types/table';
 import type { Booking } from '../types/booking';
-import { RECENT_BOOKINGS_DATA } from '../data/mockData';
+import { useBookings, useCreateBooking, useCancelBooking } from '../api/hooks/bookingHooks';
 
 const SERVICE_OPTIONS = [
   'General Consultation',
@@ -21,8 +21,11 @@ const SERVICE_OPTIONS = [
 ];
 
 export const BookingsPage: React.FC = () => {
-  const [bookingsList, setBookingsList] = useState<Booking[]>(RECENT_BOOKINGS_DATA);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('All');
+  const { data: bookingsList = [], isLoading } = useBookings(undefined, selectedStatusFilter);
+  const createBookingMutation = useCreateBooking();
+  const cancelBookingMutation = useCancelBooking();
+
   const [showForm, setShowForm] = useState<boolean>(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
@@ -41,20 +44,15 @@ export const BookingsPage: React.FC = () => {
     e.preventDefault();
     if (!newCustomerName.trim()) return;
 
-    const newTicketNum = `#BK-${1050 + bookingsList.length}`;
-    const newBookingItem: Booking = {
-      id: `booking-${Date.now()}`,
-      ticketNumber: newTicketNum,
+    createBookingMutation.mutate({
       customerName: newCustomerName,
       serviceName: newService,
       branchName: 'Main Branch',
-      status: 'Waiting',
+      customerPhone: newPhone || '+880 1700 000000',
       timeSlot: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      date: new Date().toISOString().split('T')[0],
-      customerPhone: newPhone || '+880 1700 000000'
-    };
+      date: new Date().toISOString().split('T')[0]
+    });
 
-    setBookingsList([newBookingItem, ...bookingsList]);
     setNewCustomerName('');
     setNewPhone('');
     setShowForm(false);
@@ -62,7 +60,7 @@ export const BookingsPage: React.FC = () => {
 
   const handleDeleteBooking = (id: string) => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
-      setBookingsList((prev) => prev.filter((b) => b.id !== id));
+      cancelBookingMutation.mutate({ id });
     }
   };
 
@@ -265,6 +263,7 @@ export const BookingsPage: React.FC = () => {
         data={filteredBookings}
         columns={columns}
         keyExtractor={(row) => row.id}
+        loading={isLoading}
         title="All Appointments"
         subtitle={`Showing ${filteredBookings.length} total bookings`}
         searchPlaceholder="Search by customer name, ticket # or service..."

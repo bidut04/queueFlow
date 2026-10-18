@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="c"></canvas>
+<script>
+const img = new Image();
+img.src = '/havenix_building.jpg';
+img.onload = () => {
+  const c = document.getElementById('c');
+  // Bounding box from earlier detection
+  const sx = 198, sy = 25, sw = 695, sh = 723;
+  c.width = sw;
+  c.height = sh;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+  const dataUrl = c.toDataURL('image/jpeg', 0.95);
+  // Send dataUrl to a simple node endpoint or save it
+  fetch('/api/save-cropped', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: dataUrl })
+  }).catch(() => {
+    // If no endpoint, put in a textarea for extraction
+    const ta = document.createElement('textarea');
+    ta.id = 'imgData';
+    ta.value = dataUrl;
+    document.body.appendChild(ta);
+  });
+};
+</script>
+</body>
+</html>

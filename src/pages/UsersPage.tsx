@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Layers3, Users as UsersIcon } from 'lucide-react';
 import { GlobalTable } from '../components/table/GlobalTable';
 import type { TableColumn } from '../types/table';
 import type { UserItem } from '../types/user';
-import { USERS_LIST } from '../data/mockData';
+import { useUsers } from '../api/hooks/userHooks';
 
 export const UsersPage: React.FC = () => {
-  const [users] = useState<UserItem[]>(USERS_LIST);
+  const { data: users = [], isLoading } = useUsers();
 
   const columns: TableColumn<UserItem>[] = [
     {
@@ -156,6 +156,7 @@ export const UsersPage: React.FC = () => {
         data={users}
         columns={columns}
         keyExtractor={(row) => row.id}
+        loading={isLoading}
         title="Total Customers (1,240)"
         searchPlaceholder="Search customer..."
         enableSearch={true}

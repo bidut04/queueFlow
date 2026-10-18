@@ -70,7 +70,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'settings', label: 'Settings', iconName: 'settings' }
 ];
 
-const COLLAPSED_WIDTH = 68;
+const COLLAPSED_WIDTH = 54;
 const MIN_EXPANDED_WIDTH = 190;
 const MAX_EXPANDED_WIDTH = 380;
 const DEFAULT_EXPANDED_WIDTH = 220;
@@ -167,9 +167,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
       gsap.set(asideRef.current, {
         width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
         margin: isCollapsed ? '10px 0 10px 10px' : '0px',
-        borderRadius: isCollapsed ? 28 : 0,
+        borderRadius: isCollapsed ? 24 : 0,
         height: isCollapsed ? 'calc(100vh - 20px)' : '100vh',
-        padding: isCollapsed ? '14px 6px 12px 6px' : '14px 10px'
+        padding: isCollapsed ? '12px 4px 10px 4px' : '14px 10px'
       });
       return;
     }
@@ -205,9 +205,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
         tl.to(aside, {
           width: COLLAPSED_WIDTH,
           margin: '10px 0 10px 10px',
-          borderRadius: 28,
+          borderRadius: 24,
           height: 'calc(100vh - 20px)',
-          padding: '14px 6px 12px 6px',
+          padding: '12px 4px 10px 4px',
           duration: 0.38,
           ease: 'power3.inOut'
         }, 0.05);
@@ -317,8 +317,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
 
     const top = targetRect.top - navRect.top + navRef.current.scrollTop;
     const height = targetRect.height;
-    const left = isCollapsed ? (navRect.width - 40) / 2 : 0;
-    const width = isCollapsed ? 40 : targetRect.width;
+    const left = isCollapsed ? (navRect.width - 34) / 2 : 0;
+    const width = isCollapsed ? 34 : targetRect.width;
 
     // Smoothly glide the indicator pill to the selected nav item
     gsap.to(activePillRef.current, {
@@ -464,10 +464,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: isCollapsed ? '14px 6px 12px 6px' : '14px 10px',
+        padding: isCollapsed ? '12px 4px 10px 4px' : '14px 10px',
         height: isCollapsed ? 'calc(100vh - 20px)' : '100vh',
         margin: isCollapsed ? '10px 0 10px 10px' : '0px',
-        borderRadius: isCollapsed ? 28 : 0,
+        borderRadius: isCollapsed ? 24 : 0,
         border: '1px solid #1e293b',
         boxShadow: isCollapsed ? '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25)' : 'none',
         position: 'sticky',
@@ -566,9 +566,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
               onClick={() => setIsCollapsed(false)}
               aria-label="Expand sidebar"
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
+                width: 34,
+                height: 34,
+                borderRadius: 10,
                 backgroundColor: '#2563eb',
                 border: 'none',
                 display: 'flex',
@@ -587,16 +587,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
                 e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              <Layers3 size={18} color="#ffffff" />
+              <Layers3 size={16} color="#ffffff" />
             </button>
           </Tooltip>
 
           <div
             style={{
-              width: 28,
+              width: 22,
               height: 1,
               backgroundColor: '#1e293b',
-              margin: '12px 0 6px 0'
+              margin: '10px 0 4px 0'
             }}
           />
         </div>
@@ -612,10 +612,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
             display: 'flex',
             flexDirection: 'column',
             alignItems: isCollapsed ? 'center' : 'stretch',
-            gap: isCollapsed ? 6 : 2,
+            gap: isCollapsed ? 4 : 2,
             flex: 1,
             overflowY: 'auto',
-            padding: isCollapsed ? '4px 0' : '0'
+            padding: isCollapsed ? '2px 0' : '0'
           }}
         >
           {/* GSAP Active Sliding Indicator Pill */}
@@ -656,9 +656,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
                       }}
                       aria-label={item.label}
                       style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
                         border: 'none',
                         backgroundColor: 'transparent',
                         color: isActive ? '#ffffff' : '#94a3b8',
@@ -676,7 +676,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
                       }}
                     >
                       <span className="qf-nav-icon" style={{ display: 'inline-flex' }}>
-                        {getNavIcon(item.iconName, 18)}
+                        {getNavIcon(item.iconName, 16)}
                       </span>
                     </button>
                   </Tooltip>
@@ -1072,9 +1072,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
           display: isCollapsed ? 'flex' : 'none',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 10,
+          gap: 7,
           width: '100%',
-          paddingTop: 8,
+          paddingTop: 6,
           borderTop: '1px solid #1e293b',
           flexShrink: 0
         }}
@@ -1085,9 +1085,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
             onClick={() => alert('Support: help@queflow.io')}
             aria-label="Contact Support"
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
+              width: 32,
+              height: 32,
+              borderRadius: 8,
               border: 'none',
               backgroundColor: 'transparent',
               color: '#94a3b8',
@@ -1106,7 +1106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
               e.currentTarget.style.color = '#94a3b8';
             }}
           >
-            <HelpCircle size={18} />
+            <HelpCircle size={16} />
           </button>
         </Tooltip>
 
@@ -1117,9 +1117,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
             onClick={() => onSelectPage('settings')}
             aria-label="Settings"
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
+              width: 32,
+              height: 32,
+              borderRadius: 8,
               border: 'none',
               backgroundColor: activePage === 'settings' ? '#2563eb' : 'transparent',
               color: activePage === 'settings' ? '#ffffff' : '#94a3b8',
@@ -1142,7 +1142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
               }
             }}
           >
-            <Settings size={18} />
+            <Settings size={16} />
           </button>
         </Tooltip>
 
@@ -1151,8 +1151,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
           <div
             onClick={() => onSelectPage('settings')}
             style={{
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               borderRadius: '50%',
               overflow: 'hidden',
               cursor: 'pointer',

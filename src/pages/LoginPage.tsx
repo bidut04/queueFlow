@@ -1,25 +1,27 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Sparkles, Layers3 } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, Layers3, AlertCircle } from 'lucide-react';
 import { orgAdminAuthStore } from '../modules/platform/services/orgAdminAuthStore';
-import { platformStore } from '../modules/platform/services/platformState';
+import { authApi } from '../api/auth.api';
 
 interface LoginPageProps {
   onNavigate?: (pageId: string) => void;
+  initialMessage?: string;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage }) => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [email, setEmail] = useState('rownok@gmail.com');
-  const [password, setPassword] = useState('••••••••••••');
-  const [fullName, setFullName] = useState('Rownok Rahman');
+  const [email, setEmail] = useState('admin@gmail.com');
+  const [password, setPassword] = useState('admin123');
+  const [fullName, setFullName] = useState('Super Administrator');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2500);
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   const navigateTo = (path: string) => {
@@ -31,34 +33,39 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
     }
   };
 
-  const handleQuickDemo = (role: 'admin' | 'staff' | 'manager') => {
+  const handleQuickDemo = (role: 'super_admin' | 'tenant_admin' | 'staff') => {
     setAuthMode('signin');
-    if (role === 'admin') {
-      setEmail('admin@queflow.com');
-      setPassword('admin12345');
-    } else if (role === 'staff') {
+    setErrorMessage(null);
+    if (role === 'super_admin') {
+      setEmail('admin@gmail.com');
+      setPassword('admin123');
+      showToast('Loaded Super Admin credentials (admin@gmail.com)!');
+    } else if (role === 'tenant_admin') {
+      setEmail('tenant.admin@queflow.com');
+      setPassword('admin123');
+      showToast('Loaded Tenant Admin credentials!');
+    } else {
       setEmail('staff.counter3@queflow.com');
       setPassword('staff12345');
-    } else {
-      setEmail('manager.gulshan@queflow.com');
-      setPassword('manager12345');
+      showToast('Loaded Staff credentials!');
     }
-    showToast(`Loaded ${role.toUpperCase()} demo credentials!`);
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    setErrorMessage(null);
 
+    const cleanEmail = email.trim().toLowerCase();
+
+    try {
       if (authMode === 'signup') {
-        // First-time Org Admin Registration: Register user and redirect to Tenant Registration
+        // First-time Org Admin Registration
         orgAdminAuthStore.signUp({
           name: fullName.trim() || 'Organization Admin',
-          email: email.trim(),
+          email: cleanEmail,
           phone: '+1 (555) 234-5678',
-          password
+          password,
         });
         showToast('Account registered! Redirecting to tenant organization registration...');
         setTimeout(() => {
@@ -67,28 +74,43 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
         return;
       }
 
-      // Sign In Flow: Check if org admin has an existing organization
-      const cleanEmail = email.toLowerCase().trim();
-      const isDefaultStaffDemo = ['admin@queflow.com', 'staff.counter3@queflow.com', 'manager.gulshan@queflow.com'].includes(cleanEmail);
-      const hasAssociatedOrg = platformStore.organizations.some(
-        (o) => o.submittedByEmail?.toLowerCase() === cleanEmail || o.contactEmail?.toLowerCase() === cleanEmail
-      );
-
-      if (!isDefaultStaffDemo && !hasAssociatedOrg) {
-        // Org Admin without tenant organization registered yet -> Redirect to Tenant Registration
-        orgAdminAuthStore.signIn(email, password);
-        showToast('Welcome! Redirecting to tenant organization registration...');
-        setTimeout(() => {
-          navigateTo('/org-portal');
-        }, 800);
-      } else {
-        // Existing Workspace User -> Redirect to Dashboard
-        showToast('Authentication Successful! Welcome to QueueFlow.');
-        setTimeout(() => {
-          navigateTo('/');
-        }, 900);
+      // Backend API Authentication with fallback for mock demo tenant users
+      try {
+        await authApi.login({
+          email: cleanEmail,
+          password,
+        });
+      } catch (backendErr: any) {
+        if (cleanEmail === 'admin@gmail.com') {
+          // Real Super Admin credentials must match backend
+          throw backendErr;
+        }
+        // Local demo session for tenant staff/admins
+        authApi.saveLocalMockSession(cleanEmail, 'TENANT_ADMIN');
       }
-    }, 600);
+
+      // Synchronize local session for compatibility
+      orgAdminAuthStore.signIn(cleanEmail, password);
+
+      const isSuper = cleanEmail === 'admin@gmail.com';
+      showToast(isSuper ? 'Welcome Super Admin! Opening Control Tower...' : 'Welcome! Opening Workspace Dashboard...');
+
+      setTimeout(() => {
+        if (isSuper) {
+          // Open Super Admin section
+          navigateTo('/platform');
+        } else {
+          // Open tenant site dashboard
+          navigateTo('/');
+        }
+      }, 700);
+    } catch (err: any) {
+      const msg = err?.message || 'Invalid email or password. Please try again.';
+      setErrorMessage(msg);
+      showToast(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -196,7 +218,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 12 }}>
               <button
                 type="button"
-                onClick={() => handleQuickDemo('admin')}
+                onClick={() => handleQuickDemo('super_admin')}
                 style={{
                   width: '100%',
                   padding: '7px 12px',
@@ -254,6 +276,49 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
               <span style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 600 }}>Or</span>
               <div style={{ flex: 1, height: 1, backgroundColor: '#e2e8f0' }} />
             </div>
+
+            {/* Alert / Notice Messages */}
+            {initialMessage && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  color: '#1d4ed8',
+                  padding: '9px 12px',
+                  borderRadius: 6,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  marginBottom: 10,
+                }}
+              >
+                <AlertCircle size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                <span>{initialMessage}</span>
+              </div>
+            )}
+
+            {errorMessage && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#b91c1c',
+                  padding: '9px 12px',
+                  borderRadius: 6,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  marginBottom: 10,
+                }}
+              >
+                <AlertCircle size={15} color="#ef4444" style={{ flexShrink: 0 }} />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             {/* Inputs */}
             <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
@@ -378,14 +443,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
               </a>
             </div>
             <div style={{ display: 'flex', gap: 5 }}>
-              <button type="button" onClick={() => handleQuickDemo('admin')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}>
-                Admin Demo
+              <button type="button" onClick={() => handleQuickDemo('super_admin')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}>
+                Super Admin
               </button>
-              <button type="button" onClick={() => handleQuickDemo('staff')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', cursor: 'pointer' }}>
-                Staff Demo
+              <button type="button" onClick={() => handleQuickDemo('tenant_admin')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', cursor: 'pointer' }}>
+                Tenant Admin
               </button>
-              <button type="button" onClick={() => handleQuickDemo('manager')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', cursor: 'pointer' }}>
-                Manager Demo
+              <button type="button" onClick={() => handleQuickDemo('staff')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+                Staff
               </button>
             </div>
           </div>

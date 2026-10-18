@@ -25,7 +25,7 @@ interface PlatformSidebarProps {
   onSelectTab: (tab: PlatformPageId) => void;
 }
 
-const COLLAPSED_WIDTH = 68;
+const COLLAPSED_WIDTH = 54;
 const MIN_EXPANDED_WIDTH = 190;
 const MAX_EXPANDED_WIDTH = 380;
 const DEFAULT_EXPANDED_WIDTH = 215;
@@ -100,7 +100,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
       gsap.set(asideRef.current, {
         width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
         margin: isCollapsed ? '10px 0 10px 10px' : '0px',
-        borderRadius: isCollapsed ? 28 : 0,
+        borderRadius: isCollapsed ? 24 : 0,
         height: isCollapsed ? 'calc(100vh - 20px)' : '100%',
         padding: isCollapsed ? '14px 6px 12px 6px' : '10px 8px'
       });
@@ -111,7 +111,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
     gsap.to(aside, {
       width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
       margin: isCollapsed ? '10px 0 10px 10px' : '0px',
-      borderRadius: isCollapsed ? 28 : 0,
+      borderRadius: isCollapsed ? 24 : 0,
       height: isCollapsed ? 'calc(100vh - 20px)' : '100%',
       padding: isCollapsed ? '14px 6px 12px 6px' : '10px 8px',
       duration: 0.36,
@@ -134,8 +134,8 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
 
     const top = targetRect.top - navRect.top + navRef.current.scrollTop;
     const height = targetRect.height;
-    const left = isCollapsed ? (navRect.width - 40) / 2 : 0;
-    const width = isCollapsed ? 40 : targetRect.width;
+    const left = isCollapsed ? (navRect.width - 34) / 2 : 0;
+    const width = isCollapsed ? 34 : targetRect.width;
 
     gsap.to(activePillRef.current, {
       top,
@@ -222,7 +222,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
         backgroundColor: '#090d16', // Preserves exact platform sidebar background color
         borderRight: isCollapsed ? 'none' : '1px solid #1e293b',
         border: isCollapsed ? '1px solid #1e293b' : undefined,
-        borderRadius: isCollapsed ? 28 : 0,
+        borderRadius: isCollapsed ? 24 : 0,
         boxShadow: isCollapsed ? '0 10px 25px -5px rgba(0, 0, 0, 0.5)' : 'none',
         display: 'flex',
         flexDirection: 'column',
@@ -299,9 +299,9 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                 onClick={() => setIsCollapsed(false)}
                 aria-label="Expand sidebar"
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
                   backgroundColor: '#3730a3',
                   border: 'none',
                   display: 'flex',
@@ -320,11 +320,11 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                   e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
-                <Cpu size={18} color="#ffffff" />
+                <Cpu size={16} color="#ffffff" />
               </button>
             </Tooltip>
 
-            <div style={{ width: 28, height: 1, backgroundColor: '#1e293b', margin: '12px 0 6px 0' }} />
+            <div style={{ width: 22, height: 1, backgroundColor: '#1e293b', margin: '10px 0 4px 0' }} />
           </div>
         )}
 
@@ -367,9 +367,9 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                       onClick={() => onSelectTab(item.id)}
                       aria-label={item.label}
                       style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
                         border: 'none',
                         backgroundColor: 'transparent',
                         color: isActive ? '#ffffff' : '#94a3b8',
@@ -387,7 +387,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                         if (!isActive) e.currentTarget.style.color = '#94a3b8';
                       }}
                     >
-                      <Icon size={18} color={isActive ? '#818cf8' : '#94a3b8'} />
+                      <Icon size={16} color={isActive ? '#818cf8' : '#94a3b8'} />
                       {item.badge && item.badge > 0 ? (
                         <span
                           style={{
@@ -501,9 +501,9 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
               onClick={() => onSelectTab('system-health')}
               aria-label="System Health"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
+                width: 32,
+                height: 32,
+                borderRadius: 8,
                 border: 'none',
                 backgroundColor: 'transparent',
                 color: '#94a3b8',
@@ -522,7 +522,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                 e.currentTarget.style.color = '#94a3b8';
               }}
             >
-              <HelpCircle size={18} />
+              <HelpCircle size={16} />
             </button>
           </Tooltip>
 
@@ -532,9 +532,9 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
               onClick={() => onSelectTab('settings')}
               aria-label="Settings"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
+                width: 32,
+                height: 32,
+                borderRadius: 8,
                 border: 'none',
                 backgroundColor: activeTab === 'settings' ? '#3730a3' : 'transparent',
                 color: activeTab === 'settings' ? '#ffffff' : '#94a3b8',
@@ -557,7 +557,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                 }
               }}
             >
-              <Settings size={18} />
+              <Settings size={16} />
             </button>
           </Tooltip>
 
@@ -565,8 +565,8 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
             <div
               onClick={() => onSelectTab('settings')}
               style={{
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 borderRadius: '50%',
                 overflow: 'hidden',
                 cursor: 'pointer',

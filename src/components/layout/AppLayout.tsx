@@ -24,11 +24,18 @@ import { platformStore } from '../../modules/platform/services/platformState';
 import { TenantContextBanner } from '../../modules/platform/components/TenantContextBanner';
 import { OrgAdminPortalPage } from '../../pages/OrgAdminPortalPage';
 
+import { authApi } from '../../api/auth.api';
+
 export const AppLayout: React.FC = () => {
   // Read clean initial page from URL path e.g. /platform or /bookings
   const getInitialPage = (): NavPageId => {
     const pathname = window.location.pathname.replace(/^\//, '');
-    if (pathname.startsWith('platform')) return 'platform';
+    if (pathname.startsWith('platform')) {
+      if (!authApi.isSuperAdmin()) {
+        return 'login';
+      }
+      return 'platform';
+    }
     const validPages: NavPageId[] = [
       'platform',
       'dashboard',
@@ -70,11 +77,15 @@ export const AppLayout: React.FC = () => {
     }
   };
 
-  // Listen for browser Back / Forward buttons
+  // Listen for browser Back / Forward buttons and 401 unauthorized events
   useEffect(() => {
     const handlePopState = () => {
       const pathname = window.location.pathname.replace(/^\//, '');
       if (pathname.startsWith('platform')) {
+        if (!authApi.isSuperAdmin()) {
+          setActivePage('login');
+          return;
+        }
         setActivePage('platform');
         return;
       }
@@ -102,12 +113,30 @@ export const AppLayout: React.FC = () => {
       setActivePage(validPages.includes(pathname as NavPageId) ? (pathname as NavPageId) : 'dashboard');
     };
 
+    const handleUnauthorized = () => {
+      setActivePage('login');
+    };
+
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
-  // Dedicated Super Admin Control Tower mode
+  // Dedicated Super Admin Control Tower mode (Protected Guard)
   if (activePage === 'platform') {
+    if (!authApi.isSuperAdmin()) {
+      return (
+        <LoginPage
+          onNavigate={(pageId) => handleSelectPage(pageId as NavPageId)}
+          initialMessage="Super Admin authentication required to access the Platform Control Tower. Please sign in with admin@gmail.com."
+        />
+      );
+    }
+
     return (
       <PlatformLayout
         onExitPlatform={() => handleSelectPage('dashboard')}
@@ -179,7 +208,7 @@ export const AppLayout: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="main-wrapper">
-        <Header />
+        <Header onNavigate={(pageId) => handleSelectPage(pageId as NavPageId)} />
         <main
           className="content-area"
           style={
