@@ -8,6 +8,10 @@ import { HowItWorksCard } from '../modules/queuePortal/components/HowItWorksCard
 import { UpcomingAppointmentCard } from '../modules/queuePortal/components/UpcomingAppointmentCard';
 import { MyBookingsModal } from '../modules/queuePortal/components/MyBookingsModal';
 import {
+  MobileQueueBottomNav,
+  type MobileBottomNavTab,
+} from '../modules/queuePortal/components/MobileQueueBottomNav';
+import {
   MOCK_LOCATIONS,
   CATEGORY_TABS,
 } from '../modules/queuePortal/data/queuePortalMockData';
@@ -101,6 +105,48 @@ export const QueueBookingPortalPage: React.FC<QueueBookingPortalPageProps> = () 
   const [isMyBookingsModalOpen, setIsMyBookingsModalOpen] = useState(false);
   const liveQueueRef = useRef<HTMLDivElement>(null);
 
+  // Active tab determination for floating mobile pill bottom navigation (matching sidebar items)
+  const activeBottomTab: MobileBottomNavTab =
+    isMyBookingsModalOpen || currentStep === 'track-queue' || currentStep === 'confirmation'
+      ? 'bookings'
+      : currentStep === 'select-branch' || currentStep === 'branch-details'
+      ? 'branches'
+      : currentStep === 'select-org' ||
+        currentStep === 'select-service' ||
+        currentStep === 'review-confirm' ||
+        currentStep === 'choose-time'
+      ? 'services'
+      : 'home';
+
+  const handleBottomNavChange = (tab: MobileBottomNavTab) => {
+    if (tab === 'bookings') {
+      if (bookedToken) {
+        setIsMyBookingsModalOpen(false);
+        handleGoToTrackQueue();
+      } else {
+        setIsMyBookingsModalOpen(true);
+      }
+    } else if (tab === 'home') {
+      setIsMyBookingsModalOpen(false);
+      if (currentStep !== 'home') {
+        resetToHome();
+      }
+      setMobileTab('services');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (tab === 'services') {
+      setIsMyBookingsModalOpen(false);
+      startBooking();
+    } else if (tab === 'branches') {
+      setIsMyBookingsModalOpen(false);
+      const tenantToUse = selectedTenant || (tenants && tenants.length > 0 ? tenants[0] : undefined);
+      if (tenantToUse) {
+        handleSelectTenant(tenantToUse);
+      } else {
+        startBooking();
+      }
+    }
+  };
+
   const onSelectViewQueue = (service: QueueServiceItem) => {
     handleViewQueue(service);
     setMobileTab('queue');
@@ -114,7 +160,7 @@ export const QueueBookingPortalPage: React.FC<QueueBookingPortalPageProps> = () 
   };
 
   return (
-    <div className="queue-portal-theme min-h-screen w-full max-w-full overflow-x-hidden bg-[#f8fafc] text-slate-800 pb-8 selection:bg-blue-100 selection:text-blue-900">
+    <div className="queue-portal-theme min-h-screen w-full max-w-full overflow-x-hidden bg-[#f8fafc] text-slate-800 pb-28 md:pb-8 selection:bg-blue-100 selection:text-blue-900">
       {/* 1. Universal Top Navbar Header */}
       <QueuePortalNavbar
         currentLocation={currentLocationText}
@@ -163,13 +209,15 @@ export const QueueBookingPortalPage: React.FC<QueueBookingPortalPageProps> = () 
               onBranchSearchChange={setBranchSearchQuery}
             />
 
-            {/* Mobile Tab Switcher */}
-            <div className="flex lg:hidden items-center p-1 bg-slate-200/70 rounded-xl mb-2.5 text-xs font-bold w-full min-w-0">
+            {/* Mobile Soft Pill Switcher matching Image 1 */}
+            <div className="flex lg:hidden items-center justify-center p-1 bg-[#eceef2] rounded-full border border-slate-200/80 shadow-inner mb-3 text-xs w-full max-w-full">
               <button
                 type="button"
                 onClick={() => setMobileTab('services')}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-center cursor-pointer ${
-                  mobileTab === 'services' ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-600'
+                className={`flex-1 py-1.5 px-3 rounded-full text-center transition-all cursor-pointer ${
+                  mobileTab === 'services'
+                    ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)] font-bold'
+                    : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
                 Nearby Services ({filteredServices.length})
@@ -177,8 +225,10 @@ export const QueueBookingPortalPage: React.FC<QueueBookingPortalPageProps> = () 
               <button
                 type="button"
                 onClick={() => setMobileTab('queue')}
-                className={`flex-1 py-1.5 px-2 rounded-lg text-center flex items-center justify-center gap-1.5 cursor-pointer ${
-                  mobileTab === 'queue' ? 'bg-white text-blue-600 shadow-2xs' : 'text-slate-600'
+                className={`flex-1 py-1.5 px-3 rounded-full text-center flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  mobileTab === 'queue'
+                    ? 'bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)] font-bold'
+                    : 'text-slate-600 hover:text-slate-900 font-medium'
                 }`}
               >
                 <span>Live Queue Status</span>
@@ -328,6 +378,14 @@ export const QueueBookingPortalPage: React.FC<QueueBookingPortalPageProps> = () 
           upcomingAppointment={upcomingAppointment}
         />
       )}
+
+      {/* Floating Mobile Bottom Navigation Pill matching Image 2 */}
+      <MobileQueueBottomNav
+        activeTab={activeBottomTab}
+        onChangeTab={handleBottomNavChange}
+        hasActiveAppointment={Boolean(upcomingAppointment)}
+        hasActiveLiveToken={Boolean(bookedToken || liveQueueData?.userTicket)}
+      />
     </div>
   );
 };
