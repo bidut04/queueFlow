@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Sparkles, Layers3, AlertCircle } from 'lucide-react';
-import { orgAdminAuthStore } from '../modules/platform/services/orgAdminAuthStore';
 import { authApi } from '../api/auth.api';
 
 interface LoginPageProps {
@@ -10,9 +9,9 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage }) => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [email, setEmail] = useState('admin@gmail.com');
-  const [password, setPassword] = useState('admin123');
-  const [fullName, setFullName] = useState('Super Administrator');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,29 +24,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage
   };
 
   const navigateTo = (path: string) => {
-    const cleanId = path.replace(/^\//, '');
+    const cleanId = path.replace(/^\//, '') || 'dashboard';
     if (onNavigate) {
       onNavigate(cleanId);
     } else {
       window.location.href = path;
-    }
-  };
-
-  const handleQuickDemo = (role: 'super_admin' | 'tenant_admin' | 'staff') => {
-    setAuthMode('signin');
-    setErrorMessage(null);
-    if (role === 'super_admin') {
-      setEmail('admin@gmail.com');
-      setPassword('admin123');
-      showToast('Loaded Super Admin credentials (admin@gmail.com)!');
-    } else if (role === 'tenant_admin') {
-      setEmail('tenant.admin@queflow.com');
-      setPassword('admin123');
-      showToast('Loaded Tenant Admin credentials!');
-    } else {
-      setEmail('staff.counter3@queflow.com');
-      setPassword('staff12345');
-      showToast('Loaded Staff credentials!');
     }
   };
 
@@ -60,50 +41,41 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage
 
     try {
       if (authMode === 'signup') {
-        // First-time Org Admin Registration
-        orgAdminAuthStore.signUp({
-          name: fullName.trim() || 'Organization Admin',
+        await authApi.register({
           email: cleanEmail,
-          phone: '+1 (555) 234-5678',
           password,
         });
-        showToast('Account registered! Redirecting to tenant organization registration...');
-        setTimeout(() => {
-          navigateTo('/org-portal');
-        }, 800);
+        showToast('Registration successful! Logging you in...');
+        await authApi.login({ email: cleanEmail, password });
+        navigateTo('/');
         return;
       }
 
-      // Backend API Authentication with fallback for mock demo tenant users
-      try {
-        await authApi.login({
-          email: cleanEmail,
-          password,
-        });
-      } catch (backendErr: any) {
-        if (cleanEmail === 'admin@gmail.com') {
-          // Real Super Admin credentials must match backend
-          throw backendErr;
-        }
-        // Local demo session for tenant staff/admins
-        authApi.saveLocalMockSession(cleanEmail, 'TENANT_ADMIN');
+      // Pure real backend API authentication - NO MOCK DATA!
+      await authApi.login({
+        email: cleanEmail,
+        password,
+      });
+
+      const isSuper = authApi.isSuperAdmin();
+      const isTenantAdmin = authApi.isTenantAdmin();
+
+      if (isSuper) {
+        showToast('Welcome Super Admin! Redirecting to Control Tower...');
+        setTimeout(() => {
+          window.location.href = '/platform';
+        }, 500);
+      } else if (isTenantAdmin) {
+        showToast('Welcome Admin! Opening Management Console...');
+        setTimeout(() => {
+          navigateTo('/dashboard');
+        }, 500);
+      } else {
+        showToast('Welcome! Opening Queue & Booking Portal...');
+        setTimeout(() => {
+          navigateTo('/queue-portal');
+        }, 500);
       }
-
-      // Synchronize local session for compatibility
-      orgAdminAuthStore.signIn(cleanEmail, password);
-
-      const isSuper = cleanEmail === 'admin@gmail.com';
-      showToast(isSuper ? 'Welcome Super Admin! Opening Control Tower...' : 'Welcome! Opening Workspace Dashboard...');
-
-      setTimeout(() => {
-        if (isSuper) {
-          // Open Super Admin section
-          navigateTo('/platform');
-        } else {
-          // Open tenant site dashboard
-          navigateTo('/');
-        }
-      }, 700);
     } catch (err: any) {
       const msg = err?.message || 'Invalid email or password. Please try again.';
       setErrorMessage(msg);
@@ -218,7 +190,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 12 }}>
               <button
                 type="button"
-                onClick={() => handleQuickDemo('super_admin')}
+                onClick={() => showToast('Single Sign-On is disabled. Please enter your email and password.')}
                 style={{
                   width: '100%',
                   padding: '7px 12px',
@@ -246,7 +218,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage
 
               <button
                 type="button"
-                onClick={() => handleQuickDemo('staff')}
+                onClick={() => showToast('Single Sign-On is disabled. Please enter your email and password.')}
                 style={{
                   width: '100%',
                   padding: '7px 12px',
@@ -428,33 +400,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage
             </div>
           </div>
 
-          {/* Quick Demo Credentials Bar */}
-          <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 9.5, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>
-                Quick Demo Credentials:
-              </span>
+            {/* Org Portal Link */}
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
               <a
                 href="/org-portal"
                 onClick={(e) => { e.preventDefault(); navigateTo('/org-portal'); }}
-                style={{ fontSize: 10, fontWeight: 800, color: '#2563eb', textDecoration: 'none' }}
+                style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}
               >
-                Org Admin Portal →
+                Register New Organization →
               </a>
             </div>
-            <div style={{ display: 'flex', gap: 5 }}>
-              <button type="button" onClick={() => handleQuickDemo('super_admin')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}>
-                Super Admin
-              </button>
-              <button type="button" onClick={() => handleQuickDemo('tenant_admin')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', cursor: 'pointer' }}>
-                Tenant Admin
-              </button>
-              <button type="button" onClick={() => handleQuickDemo('staff')} style={{ fontSize: 9.5, fontWeight: 700, padding: '2px 7px', borderRadius: 4, backgroundColor: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
-                Staff
-              </button>
-            </div>
           </div>
-        </div>
 
         {/* Right Column: Full Height Image matching Form Height with No Side Space */}
         <div

@@ -15,10 +15,20 @@ import { GlobalTable } from '../components/table/GlobalTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import type { TableColumn } from '../types/table';
-import { INITIAL_ASSOCIATIONS, type EmployeeDepartmentAssociation } from '../data/mockAssociations';
+import type { EmployeeDepartmentAssociation } from '../data/mockAssociations';
+import {
+  useAssociations,
+  useCreateAssociation,
+  useUpdateAssociation,
+  useDeleteAssociation,
+} from '../api';
 
 export const EmployeeDepartmentAssociationPage: React.FC = () => {
-  const [associations, setAssociations] = useState<EmployeeDepartmentAssociation[]>(INITIAL_ASSOCIATIONS);
+  const { data: associations = [] } = useAssociations();
+  const createAssocMutation = useCreateAssociation();
+  const updateAssocMutation = useUpdateAssociation();
+  const deleteAssocMutation = useDeleteAssociation();
+
   const [showForm, setShowForm] = useState(false);
   const [editingAssoc, setEditingAssoc] = useState<EmployeeDepartmentAssociation | null>(null);
 
@@ -76,13 +86,16 @@ export const EmployeeDepartmentAssociationPage: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDeleteAssoc = (id: string) => {
-    const updated = associations.filter((a) => a.id !== id);
-    setAssociations(updated);
-    showToast('Employee Department association removed!');
+  const handleDeleteAssoc = async (id: string) => {
+    try {
+      await deleteAssocMutation.mutateAsync(id);
+      showToast('Employee Department association removed!');
+    } catch {
+      showToast('Failed to remove association.');
+    }
   };
 
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formState.employeeName.trim()) {
       showToast('Employee Name is required!');
@@ -90,40 +103,40 @@ export const EmployeeDepartmentAssociationPage: React.FC = () => {
     }
 
     if (editingAssoc) {
-      const updated = associations.map((a) =>
-        a.id === editingAssoc.id
-          ? {
-              ...a,
-              assocCode: formState.assocCode,
-              employeeId: formState.employeeId,
-              employeeName: formState.employeeName,
-              deptId: formState.deptId,
-              deptName: formState.deptName,
-              designationRole: formState.designationRole,
-              associationType: formState.associationType,
-              branch: formState.branch,
-              status: formState.status
-            }
-          : a
-      );
-      setAssociations(updated);
-      showToast(`Association updated for ${formState.employeeName}!`);
+      try {
+        await updateAssocMutation.mutateAsync({
+          id: editingAssoc.id,
+          assocCode: formState.assocCode,
+          employeeId: formState.employeeId,
+          employeeName: formState.employeeName,
+          deptId: formState.deptId,
+          deptName: formState.deptName,
+          designationRole: formState.designationRole,
+          associationType: formState.associationType,
+          branch: formState.branch,
+          status: formState.status,
+        });
+        showToast(`Association updated for ${formState.employeeName}!`);
+      } catch {
+        showToast(`Failed to update association.`);
+      }
     } else {
-      const newAssoc: EmployeeDepartmentAssociation = {
-        id: `assoc_${Date.now()}`,
-        assocCode: formState.assocCode,
-        employeeId: formState.employeeId,
-        employeeName: formState.employeeName,
-        deptId: formState.deptId,
-        deptName: formState.deptName,
-        designationRole: formState.designationRole,
-        associationType: formState.associationType,
-        branch: formState.branch,
-        assignedDate: new Date().toISOString().split('T')[0],
-        status: formState.status
-      };
-      setAssociations([newAssoc, ...associations]);
-      showToast(`New department association mapped for ${formState.employeeName}!`);
+      try {
+        await createAssocMutation.mutateAsync({
+          assocCode: formState.assocCode,
+          employeeId: formState.employeeId,
+          employeeName: formState.employeeName,
+          deptId: formState.deptId,
+          deptName: formState.deptName,
+          designationRole: formState.designationRole,
+          associationType: formState.associationType,
+          branch: formState.branch,
+          status: formState.status,
+        });
+        showToast(`New department association mapped for ${formState.employeeName}!`);
+      } catch {
+        showToast(`Failed to create association.`);
+      }
     }
 
     setShowForm(false);

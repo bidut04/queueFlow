@@ -19,15 +19,44 @@ import { platformStore } from '../services/platformState';
 import type { Organization, SystemComponentHealth, PlatformAuditLog, PlatformPageId } from '../types/platform';
 import type { TableColumn } from '../../../types/table';
 import { GlobalTable } from '../../../components/table/GlobalTable';
+import {
+  usePlatformDashboard,
+  usePlatformOrganizations,
+  usePlatformHealth,
+  usePlatformAuditLogs,
+} from '../hooks';
 
 interface PlatformDashboardProps {
   onNavigate: (tab: PlatformPageId, orgId?: string) => void;
 }
 
 export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigate }) => {
-  const [organizations, setOrganizations] = useState<Organization[]>(platformStore.organizations);
-  const [healthItems, setHealthItems] = useState<SystemComponentHealth[]>(platformStore.systemHealth);
-  const [auditLogs, setAuditLogs] = useState<PlatformAuditLog[]>(platformStore.auditLogs);
+  const { data: dashboardData } = usePlatformDashboard();
+  const { data: liveOrgs } = usePlatformOrganizations();
+  const { data: liveHealth } = usePlatformHealth();
+  const { data: liveAudit } = usePlatformAuditLogs({ limit: 10 });
+
+  const [organizations, setOrganizations] = useState<Organization[]>(
+    liveOrgs || platformStore.organizations
+  );
+  const [healthItems, setHealthItems] = useState<SystemComponentHealth[]>(
+    liveHealth || platformStore.systemHealth
+  );
+  const [auditLogs, setAuditLogs] = useState<PlatformAuditLog[]>(
+    liveAudit || platformStore.auditLogs
+  );
+
+  useEffect(() => {
+    if (liveOrgs && liveOrgs.length > 0) setOrganizations(liveOrgs);
+  }, [liveOrgs]);
+
+  useEffect(() => {
+    if (liveHealth && liveHealth.length > 0) setHealthItems(liveHealth);
+  }, [liveHealth]);
+
+  useEffect(() => {
+    if (liveAudit && liveAudit.length > 0) setAuditLogs(liveAudit);
+  }, [liveAudit]);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -37,13 +66,15 @@ export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigate
     });
   }, []);
 
-  const totalOrgs = organizations.length;
-  const activeOrgs = organizations.filter((o) => o.status === 'ACTIVE').length;
-  const suspendedOrgs = organizations.filter((o) => o.status === 'SUSPENDED').length;
-  const totalBranches = organizations.reduce((acc, o) => acc + o.branchesCount, 0);
-  const totalPlatformUsers = platformStore.platformUsers.length;
-  const activeSubscriptions = organizations.filter((o) => o.subscriptionState === 'ACTIVE').length;
-  const totalMonthlyBookings = organizations.reduce((acc, o) => acc + o.monthlyBookingsCount, 0);
+
+  const totalOrgs = dashboardData?.organizations?.total ?? organizations.length;
+  const activeOrgs = dashboardData?.organizations?.active ?? organizations.filter((o) => o.status === 'ACTIVE').length;
+  const suspendedOrgs = dashboardData?.organizations?.suspended ?? organizations.filter((o) => o.status === 'SUSPENDED').length;
+  const totalBranches = dashboardData?.infrastructure?.totalLocations ?? organizations.reduce((acc, o) => acc + o.branchesCount, 0);
+  const totalPlatformUsers = dashboardData?.infrastructure?.totalPlatformUsers ?? platformStore.platformUsers.length;
+  const activeSubscriptions = dashboardData?.infrastructure?.activeSubscriptions ?? organizations.filter((o) => o.subscriptionState === 'ACTIVE').length;
+  const totalMonthlyBookings = dashboardData?.infrastructure?.monthlyBookings ?? organizations.reduce((acc, o) => acc + o.monthlyBookingsCount, 0);
+
 
   const getHealthBadge = (status: string) => {
     switch (status) {

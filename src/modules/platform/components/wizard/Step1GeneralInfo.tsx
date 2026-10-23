@@ -32,14 +32,15 @@ const orgTypeOptions: ComboBoxOption<OrgType>[] = [
 ];
 
 const countryOptions: ComboBoxOption[] = [
-  { value: 'United States', label: 'United States' },
-  { value: 'Canada', label: 'Canada' },
-  { value: 'United Kingdom', label: 'United Kingdom' },
-  { value: 'Germany', label: 'Germany' },
-  { value: 'Bangladesh', label: 'Bangladesh' },
-  { value: 'Singapore', label: 'Singapore' },
-  { value: 'Australia', label: 'Australia' },
-  { value: 'United Arab Emirates', label: 'United Arab Emirates' }
+  { value: 'US', label: 'United States (US)' },
+  { value: 'IN', label: 'India (IN)' },
+  { value: 'GB', label: 'United Kingdom (GB)' },
+  { value: 'CA', label: 'Canada (CA)' },
+  { value: 'DE', label: 'Germany (DE)' },
+  { value: 'BD', label: 'Bangladesh (BD)' },
+  { value: 'SG', label: 'Singapore (SG)' },
+  { value: 'AU', label: 'Australia (AU)' },
+  { value: 'AE', label: 'United Arab Emirates (AE)' }
 ];
 
 const timezoneOptions: ComboBoxOption[] = [

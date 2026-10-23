@@ -16,7 +16,12 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import type { TableColumn } from '../types/table';
 import type { Service } from '../types/service';
-import { SERVICES_LIST } from '../data/mockData';
+import {
+  useServices,
+  useCreateService,
+  useUpdateService,
+  useDeleteService,
+} from '../api';
 import {
   DynamicFilterBar,
   applyDynamicFilters,
@@ -67,7 +72,10 @@ const filterConfigs: FilterConfigOption[] = [
 ];
 
 export const ServicesPage: React.FC = () => {
-  const [services, setServices] = useState<Service[]>(SERVICES_LIST);
+  const { data: services = [] } = useServices();
+  const createServiceMutation = useCreateService();
+  const updateServiceMutation = useUpdateService();
+  const deleteServiceMutation = useDeleteService();
 
   // Dynamic Filter State
   const [filterValues, setFilterValues] = useState<DynamicFilterValues>({
@@ -132,37 +140,40 @@ export const ServicesPage: React.FC = () => {
     setShowServiceForm(true);
   };
 
-  const handleSaveService = (e: React.FormEvent) => {
+  const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!serviceForm.name.trim()) return;
 
     if (editingService) {
-      setServices((prev) =>
-        prev.map((s) =>
-          s.id === editingService.id
-            ? { ...s, ...serviceForm }
-            : s
-        )
-      );
-      showToast(`Service "${serviceForm.name}" updated successfully!`);
+      try {
+        await updateServiceMutation.mutateAsync({
+          id: editingService.id,
+          ...serviceForm,
+        });
+        showToast(`Service "${serviceForm.name}" updated successfully!`);
+      } catch {
+        showToast(`Failed to update service.`);
+      }
     } else {
-      const newService: Service = {
-        id: `srv-${Date.now()}`,
-        ...serviceForm,
-        totalBookingsThisMonth: 0,
-        growthRate: 5
-      };
-      setServices((prev) => [newService, ...prev]);
-      showToast(`New Service "${serviceForm.name}" created successfully!`);
+      try {
+        await createServiceMutation.mutateAsync(serviceForm);
+        showToast(`New Service "${serviceForm.name}" created successfully!`);
+      } catch {
+        showToast(`Failed to create service.`);
+      }
     }
     setShowServiceForm(false);
     setEditingService(null);
   };
 
-  const handleDeleteService = (id: string, name: string) => {
+  const handleDeleteService = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to remove service "${name}"?`)) {
-      setServices((prev) => prev.filter((s) => s.id !== id));
-      showToast(`Service "${name}" deleted.`);
+      try {
+        await deleteServiceMutation.mutateAsync(id);
+        showToast(`Service "${name}" deleted.`);
+      } catch {
+        showToast(`Failed to delete service.`);
+      }
     }
   };
 

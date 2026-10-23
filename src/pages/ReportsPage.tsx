@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Download, TrendingUp } from 'lucide-react';
 import { GlobalTable } from '../components/table/GlobalTable';
 import { Button } from '../components/ui/Button';
 import type { TableColumn } from '../types/table';
 import type { BranchPerformanceData } from '../types/dashboard';
-import { BRANCH_PERFORMANCE_DATA } from '../data/mockData';
 
 export const ReportsPage: React.FC = () => {
+  const [reportData] = useState<BranchPerformanceData[]>([]);
   const columns: TableColumn<BranchPerformanceData>[] = [
     {
       key: 'name',
@@ -57,7 +57,7 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       <GlobalTable<BranchPerformanceData>
-        data={BRANCH_PERFORMANCE_DATA}
+        data={reportData}
         columns={columns}
         keyExtractor={(row) => row.id}
         title="Branch Efficiency Breakdown"

@@ -136,8 +136,15 @@ export const formStore = {
         const cleaned = parsed.map((config) => {
           if (config.formType === 'BOOKING' || config.formType === 'APPOINTMENT') {
             const allowedKeys = ['full_name', 'phone', 'service', 'gender', 'customer_name'];
-            const filteredFields = config.fields.filter((f) => allowedKeys.includes(f.key));
-            return { ...config, fields: filteredFields.length > 0 ? filteredFields : INITIAL_FORM_CONFIGS[0].fields };
+            const filteredFields = config.fields ? config.fields.filter((f) => allowedKeys.includes(f.key)) : [];
+            const now = new Date().toISOString();
+            const fallbackFields: FormField[] = [
+              { id: 'f_name', key: 'full_name', label: 'Full Name', type: 'TEXT', required: true, enabled: true, order: 1, createdAt: now, updatedAt: now },
+              { id: 'f_phone', key: 'phone', label: 'Phone Number', type: 'PHONE', required: true, enabled: true, order: 2, createdAt: now, updatedAt: now },
+              { id: 'f_service', key: 'service', label: 'Service', type: 'DROPDOWN', required: true, enabled: true, order: 3, createdAt: now, updatedAt: now },
+              { id: 'f_gender', key: 'gender', label: 'Gender', type: 'DROPDOWN', required: false, enabled: true, order: 4, createdAt: now, updatedAt: now }
+            ];
+            return { ...config, fields: filteredFields.length > 0 ? filteredFields : (INITIAL_FORM_CONFIGS[0]?.fields || fallbackFields) };
           }
           return config;
         });

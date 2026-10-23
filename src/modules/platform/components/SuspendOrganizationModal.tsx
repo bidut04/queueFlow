@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { useSuspendOrganization } from '../hooks';
 import type { Organization } from '../types/platform';
+import { toast } from '../../../components/ui/Toast';
 
 interface SuspendOrganizationModalProps {
   organization: Organization | null;
@@ -16,24 +18,37 @@ export const SuspendOrganizationModal: React.FC<SuspendOrganizationModalProps> =
   onClose,
   onSuccess
 }) => {
+  const suspendMutation = useSuspendOrganization();
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
 
   if (!isOpen || !organization) return null;
 
-  const handleConfirmSuspend = (e: React.FormEvent) => {
+  const handleConfirmSuspend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) {
       setError('A suspension reason is mandatory for audit compliance.');
       return;
     }
 
-    platformStore.suspendOrganization(organization.id, reason.trim());
+    try {
+      await suspendMutation.mutateAsync({
+        id: organization.id,
+        reason: reason.trim()
+      });
+      toast.success(`Organization "${organization.name}" has been suspended.`);
+    } catch (err: any) {
+      toast.fromApiError(err, 'Failed to suspend organization');
+    }
+
+    await platformStore.suspendOrganization(organization.id, reason.trim());
     setReason('');
     setError('');
     onSuccess();
     onClose();
   };
+
+
 
   return (
     <div

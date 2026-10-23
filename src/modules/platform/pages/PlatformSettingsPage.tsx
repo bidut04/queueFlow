@@ -1,19 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, Check } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { usePlatformSettings, useUpdatePlatformSettings } from '../hooks';
 import type { PlatformSettings } from '../types/platform';
 
 export const PlatformSettingsPage: React.FC = () => {
-  const [settings, setSettings] = useState<PlatformSettings>({ ...platformStore.settings });
+  const { data: liveSettings } = usePlatformSettings();
+  const updateSettingsMutation = useUpdatePlatformSettings();
+  const [settings, setSettings] = useState<PlatformSettings>(
+    liveSettings || { ...platformStore.settings }
+  );
   const [activeSection, setActiveSection] = useState<'general' | 'security' | 'rateLimits' | 'notifications' | 'infrastructure'>('general');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (liveSettings) {
+      setSettings(liveSettings);
+    }
+  }, [liveSettings]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      await updateSettingsMutation.mutateAsync({
+        category: activeSection,
+        settings: settings[activeSection] as Record<string, unknown>
+      });
+    } catch {
+      // Fallback
+    }
     platformStore.settings = { ...settings };
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

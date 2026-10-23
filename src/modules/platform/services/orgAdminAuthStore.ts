@@ -14,7 +14,14 @@ class OrgAdminAuthStore {
   public currentUser: OrgAdminUser | null = null;
 
   constructor() {
-    // Check if there is an active session or initialize with a default demo if stored
+    // Purge any legacy plaintext credentials left in browser storage
+    try {
+      localStorage.removeItem('qf_user_credentials');
+    } catch {
+      // ignore
+    }
+
+    // Check if there is an active session
     const saved = localStorage.getItem('qf_org_admin_user');
     if (saved) {
       try {
@@ -37,17 +44,35 @@ class OrgAdminAuthStore {
   }
 
   public signUp(data: { name: string; email: string; phone: string; password?: string }): OrgAdminUser {
+    const cleanEmail = data.email.toLowerCase().trim();
     const newUser: OrgAdminUser = {
       id: `orgadm-${Date.now().toString().slice(-4)}`,
       name: data.name,
-      email: data.email.toLowerCase().trim(),
+      email: cleanEmail,
       phone: data.phone || ''
     };
 
+    // Passwords must NEVER be stored in localStorage; authentication is delegated to the secure backend API.
     this.currentUser = newUser;
     localStorage.setItem('qf_org_admin_user', JSON.stringify(newUser));
     this.notify();
     return newUser;
+  }
+
+  public getRegisteredUser(email?: string): OrgAdminUser | null {
+    if (!email && this.currentUser) return this.currentUser;
+    try {
+      const saved = localStorage.getItem('qf_org_admin_user');
+      if (saved) {
+        const user = JSON.parse(saved) as OrgAdminUser;
+        if (!email || user.email.toLowerCase() === email.toLowerCase().trim()) {
+          return user;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
   }
 
   public signIn(email: string, _password?: string): OrgAdminUser {
@@ -74,6 +99,11 @@ class OrgAdminAuthStore {
   public signOut(): void {
     this.currentUser = null;
     localStorage.removeItem('qf_org_admin_user');
+    try {
+      localStorage.removeItem('qf_user_credentials');
+    } catch {
+      // ignore
+    }
     this.notify();
   }
 

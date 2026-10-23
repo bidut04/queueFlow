@@ -1,11 +1,21 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Check } from 'lucide-react';
 import { platformStore } from '../services/platformState';
-import type { PlatformSubscriptionPlan } from '../types/platform';
+import { usePlatformPlans, usePlatformOrganizations } from '../hooks';
+import type { PlatformSubscriptionPlan, Organization } from '../types/platform';
 
 export const SubscriptionsPage: React.FC = () => {
-  const [plans] = useState<PlatformSubscriptionPlan[]>(platformStore.subscriptionPlans);
-  const organizations = platformStore.organizations;
+  const { data: livePlans } = usePlatformPlans();
+  const { data: liveOrgs } = usePlatformOrganizations();
+
+  const plans: PlatformSubscriptionPlan[] = (livePlans && livePlans.length > 0)
+    ? livePlans
+    : platformStore.subscriptionPlans;
+
+  const organizations: Organization[] = (liveOrgs && liveOrgs.length > 0)
+    ? liveOrgs
+    : platformStore.organizations;
+
 
   const subscriptionStatusCounts = {
     ACTIVE: organizations.filter((o) => o.subscriptionState === 'ACTIVE').length,
@@ -56,12 +66,25 @@ export const SubscriptionsPage: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                borderTop: plan.name === 'Enterprise' ? '4px solid #4f46e5' : '4px solid #cbd5e1'
+                borderTop: plan.name === 'Free' 
+                  ? '4px solid #10b981' 
+                  : plan.name === 'Enterprise' 
+                    ? '4px solid #4f46e5' 
+                    : plan.name === 'Professional'
+                      ? '4px solid #6366f1'
+                      : '4px solid #cbd5e1'
               }}
             >
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{plan.name}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{plan.name}</h3>
+                    {plan.name === 'Free' && (
+                      <span style={{ fontSize: 9.5, fontWeight: 800, backgroundColor: '#ecfdf5', color: '#059669', padding: '2px 6px', borderRadius: 4, border: '1px solid #a7f3d0' }}>
+                        FREE TIER
+                      </span>
+                    )}
+                  </div>
                   <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 4 }}>
                     {orgsOnPlan} Active Orgs
                   </span>
@@ -69,7 +92,9 @@ export const SubscriptionsPage: React.FC = () => {
 
                 <div style={{ margin: '14px 0 16px 0' }}>
                   <span style={{ fontSize: 28, fontWeight: 900, color: '#0f172a' }}>${plan.priceMonthly}</span>
-                  <span style={{ fontSize: 12, color: '#64748b' }}> / month per organization</span>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>
+                    {plan.priceMonthly === 0 ? ' (No credit card needed)' : ' / month per organization'}
+                  </span>
                 </div>
 
                 <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12.5, color: '#475569' }}>

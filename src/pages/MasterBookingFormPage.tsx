@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   FileText,
   Plus,
@@ -21,124 +21,152 @@ import type { FormConfig, FormField, FieldType } from '../types/formBuilder';
 import { formStore } from '../utils/formEngine';
 import { FieldSettingsPanel } from '../components/forms/FieldSettingsPanel';
 import { Button } from '../components/ui/Button';
+import { useSaveFormConfig, usePublishFormConfig } from '../api';
 import { Combobox } from '../components/ui/Combobox';
 
+const resolveBookingConfig = (branch: string, service: string): FormConfig => {
+  const loadedConfigs = formStore.getConfigs();
+  const matching = loadedConfigs.find(
+    (c) => c.branchId === branch && c.serviceId === service && c.formType === 'BOOKING'
+  );
+  if (matching) {
+    const allowedKeys = ['full_name', 'phone', 'service', 'gender'];
+    const filtered = matching.fields.filter((f) => allowedKeys.includes(f.key));
+    return { ...matching, fields: filtered };
+  }
+  const newForm: FormConfig = {
+    id: `form_booking_${branch}_${service}_v1`,
+    tenantId: 'tenant_queflow_bank',
+    branchId: branch,
+    serviceId: service,
+    name: `Booking Form (${branch.replace('branch_', '').toUpperCase()})`,
+    description: 'Configured booking form layout for customer appointments',
+    formType: 'BOOKING',
+    version: 1,
+    status: 'PUBLISHED',
+    fields: [
+      {
+        id: 'f_name',
+        key: 'full_name',
+        label: 'Customer Name',
+        type: 'TEXT',
+        placeholder: 'Enter customer name',
+        required: true,
+        enabled: true,
+        order: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'f_phone',
+        key: 'phone',
+        label: 'Phone Number',
+        type: 'PHONE',
+        placeholder: '+880 1700 000000',
+        required: true,
+        enabled: true,
+        order: 2,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'f_service',
+        key: 'service',
+        label: 'Select Service',
+        type: 'DROPDOWN',
+        required: true,
+        enabled: true,
+        order: 3,
+        options: [
+          { value: 'GENERAL', label: 'General Consultation', enabled: true, order: 1 },
+          { value: 'KYC', label: 'KYC Verification', enabled: true, order: 2 },
+          { value: 'CASH', label: 'Cash Service', enabled: true, order: 3 },
+          { value: 'LOAN', label: 'Loan Consultation', enabled: true, order: 4 },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'f_gender',
+        key: 'gender',
+        label: 'Gender',
+        type: 'RADIO',
+        required: true,
+        enabled: true,
+        order: 4,
+        options: [
+          { value: 'MALE', label: 'Male', enabled: true, order: 1 },
+          { value: 'FEMALE', label: 'Female', enabled: true, order: 2 },
+          { value: 'OTHER', label: 'Other', enabled: true, order: 3 },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  formStore.saveFormConfig(newForm);
+  return newForm;
+};
+
 export const MasterBookingFormPage: React.FC = () => {
+  const saveFormMutation = useSaveFormConfig();
+  const publishFormMutation = usePublishFormConfig();
+
   const [selectedBranch, setSelectedBranch] = useState<string>('branch_kolkata');
   const [selectedService, setSelectedService] = useState<string>('service_kyc');
-  const [activeConfig, setActiveConfig] = useState<FormConfig | null>(null);
+  const [activeConfig, setActiveConfig] = useState<FormConfig>(() =>
+    resolveBookingConfig('branch_kolkata', 'service_kyc')
+  );
   const [editingField, setEditingField] = useState<FormField | null>(null);
   const [newFieldType, setNewFieldType] = useState<FieldType>('TEXT');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const formUrl = `${window.location.origin}/book/${selectedBranch}/${selectedService}`;
 
-  useEffect(() => {
-    const loadedConfigs = formStore.getConfigs();
-    const matching = loadedConfigs.find(
-      (c) => c.branchId === selectedBranch && c.serviceId === selectedService && c.formType === 'BOOKING'
-    );
+  const handleBranchSelect = (branch: string) => {
+    setSelectedBranch(branch);
+    setActiveConfig(resolveBookingConfig(branch, selectedService));
+  };
 
-    if (matching) {
-      const allowedKeys = ['full_name', 'phone', 'service', 'gender'];
-      const filtered = matching.fields.filter((f) => allowedKeys.includes(f.key));
-      setActiveConfig({ ...matching, fields: filtered });
-    } else {
-      const newForm: FormConfig = {
-        id: `form_booking_${selectedBranch}_${selectedService}_v1`,
-        tenantId: 'tenant_queflow_bank',
-        branchId: selectedBranch,
-        serviceId: selectedService,
-        name: `Booking Form (${selectedBranch.replace('branch_', '').toUpperCase()})`,
-        description: 'Configured booking form layout for customer appointments',
-        formType: 'BOOKING',
-        version: 1,
-        status: 'PUBLISHED',
-        fields: [
-          {
-            id: 'f_name',
-            key: 'full_name',
-            label: 'Customer Name',
-            type: 'TEXT',
-            placeholder: 'Enter customer name',
-            required: true,
-            enabled: true,
-            order: 1,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'f_phone',
-            key: 'phone',
-            label: 'Phone Number',
-            type: 'PHONE',
-            placeholder: '+880 1700 000000',
-            required: true,
-            enabled: true,
-            order: 2,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'f_service',
-            key: 'service',
-            label: 'Select Service',
-            type: 'DROPDOWN',
-            required: true,
-            enabled: true,
-            order: 3,
-            options: [
-              { value: 'GENERAL', label: 'General Consultation', enabled: true, order: 1 },
-              { value: 'KYC', label: 'KYC Verification', enabled: true, order: 2 },
-              { value: 'CASH', label: 'Cash Service', enabled: true, order: 3 },
-              { value: 'LOAN', label: 'Loan Consultation', enabled: true, order: 4 }
-            ],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'f_gender',
-            key: 'gender',
-            label: 'Gender',
-            type: 'RADIO',
-            required: true,
-            enabled: true,
-            order: 4,
-            options: [
-              { value: 'MALE', label: 'Male', enabled: true, order: 1 },
-              { value: 'FEMALE', label: 'Female', enabled: true, order: 2 },
-              { value: 'OTHER', label: 'Other', enabled: true, order: 3 }
-            ],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      formStore.saveFormConfig(newForm);
-      setActiveConfig(newForm);
-    }
-  }, [selectedBranch, selectedService]);
+  const handleServiceSelect = (service: string) => {
+    setSelectedService(service);
+    setActiveConfig(resolveBookingConfig(selectedBranch, service));
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!activeConfig) return;
-    const saved = formStore.saveFormConfig(activeConfig);
-    setActiveConfig(saved);
-    showToast('Form structure saved successfully!');
+    try {
+      const saved = await saveFormMutation.mutateAsync(activeConfig);
+      setActiveConfig(saved);
+      showToast('Form structure saved successfully!');
+    } catch {
+      const saved = formStore.saveFormConfig(activeConfig);
+      setActiveConfig(saved);
+      showToast('Form structure saved locally!');
+    }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!activeConfig) return;
-    const published = formStore.publishFormConfig(activeConfig.id);
-    if (published) {
-      setActiveConfig(published);
+    try {
+      const published = await publishFormMutation.mutateAsync(activeConfig.id);
+      if (published) {
+        setActiveConfig(published);
+      }
       showToast('Booking form published & activated for live bookings!');
+    } catch {
+      const published = formStore.publishFormConfig(activeConfig.id);
+      if (published) {
+        setActiveConfig(published);
+      }
+      showToast('Booking form published & activated!');
     }
   };
 
@@ -156,9 +184,9 @@ export const MasterBookingFormPage: React.FC = () => {
       order: count,
       options: ['DROPDOWN', 'RADIO', 'CHECKBOX'].includes(newFieldType)
         ? [
-            { value: 'OPTION_1', label: 'Option 1', enabled: true, order: 1 },
-            { value: 'OPTION_2', label: 'Option 2', enabled: true, order: 2 }
-          ]
+          { value: 'OPTION_1', label: 'Option 1', enabled: true, order: 1 },
+          { value: 'OPTION_2', label: 'Option 2', enabled: true, order: 2 }
+        ]
         : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -255,7 +283,7 @@ export const MasterBookingFormPage: React.FC = () => {
             <GitBranch size={14} color="#2563eb" />
             <select
               value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
+              onChange={(e) => handleBranchSelect(e.target.value)}
               style={{ border: 'none', outline: 'none', backgroundColor: 'transparent', fontSize: 12, fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}
             >
               <option value="branch_kolkata">Kolkata Branch</option>
@@ -269,7 +297,7 @@ export const MasterBookingFormPage: React.FC = () => {
             <Briefcase size={14} color="#2563eb" />
             <select
               value={selectedService}
-              onChange={(e) => setSelectedService(e.target.value)}
+              onChange={(e) => handleServiceSelect(e.target.value)}
               style={{ border: 'none', outline: 'none', backgroundColor: 'transparent', fontSize: 12, fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}
             >
               <option value="service_kyc">KYC Verification Service</option>
@@ -631,14 +659,14 @@ export const MasterBookingFormPage: React.FC = () => {
                       <Combobox
                         options={(field.options || []).map((o) => ({ value: o.value, label: o.label }))}
                         value={field.defaultValue ? String(field.defaultValue) : ''}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         placeholder={field.placeholder || `Select ${field.label.toLowerCase()}...`}
                       />
                     ) : field.type === 'RADIO' ? (
                       <Combobox
                         options={(field.options || []).map((o) => ({ value: o.value, label: o.label }))}
                         value={(field.options || [])[0]?.value || ''}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         placeholder={`Select ${field.label.toLowerCase()}...`}
                       />
                     ) : (

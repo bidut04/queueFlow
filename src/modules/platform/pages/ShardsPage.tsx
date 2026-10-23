@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { usePlatformShards, useUpdateShard } from '../hooks';
 import type { ShardInfo, PlatformPageId } from '../types/platform';
 import type { TableColumn } from '../../../types/table';
 import { GlobalTable } from '../../../components/table/GlobalTable';
@@ -11,8 +12,16 @@ interface ShardsPageProps {
 }
 
 export const ShardsPage: React.FC<ShardsPageProps> = () => {
-  const [shards, setShards] = useState<ShardInfo[]>(platformStore.shards);
+  const { data: liveShards } = usePlatformShards();
+  const updateShardMutation = useUpdateShard();
+  const [shards, setShards] = useState<ShardInfo[]>(liveShards || platformStore.shards);
   const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (liveShards && liveShards.length > 0) {
+      setShards(liveShards);
+    }
+  }, [liveShards]);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -20,16 +29,26 @@ export const ShardsPage: React.FC<ShardsPageProps> = () => {
     });
   }, []);
 
-  const handleToggleReadOnly = (shardId: string, currentReadOnly: boolean) => {
-    const s = platformStore.shards.find((item) => item.id === shardId);
+  const handleToggleReadOnly = async (shardId: string, currentReadOnly: boolean) => {
+    const s = shards.find((item) => item.id === shardId);
     if (!s) return;
 
     if (window.confirm(`Set ${shardId} to ${currentReadOnly ? 'Read-Write' : 'Read-Only'} mode?`)) {
+      try {
+        await updateShardMutation.mutateAsync({
+          id: shardId,
+          input: { readOnly: !currentReadOnly }
+        });
+      } catch {
+        // Fallback
+      }
+
       s.readOnly = !currentReadOnly;
       s.status = s.readOnly ? 'READ_ONLY' : 'HEALTHY';
-      setShards([...platformStore.shards]);
+      setShards([...shards]);
     }
   };
+
 
   const columns: TableColumn<ShardInfo>[] = [
     {

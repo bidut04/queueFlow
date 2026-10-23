@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, ShieldPlus } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { useInvitePlatformUser } from '../hooks';
 import type { PlatformRole } from '../types/platform';
 
 interface PlatformUserModalProps {
@@ -14,20 +15,26 @@ export const PlatformUserModal: React.FC<PlatformUserModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  const inviteMutation = useInvitePlatformUser();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<PlatformRole>('PLATFORM_ADMIN');
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email) {
       alert('Please fill in Name and Email.');
       return;
     }
 
-    platformStore.invitePlatformUser({
+    try {
+      await inviteMutation.mutateAsync({ name, email, role });
+    } catch {
+      // Fallback
+    }
+    await platformStore.invitePlatformUser({
       name,
       email,
       role
@@ -36,6 +43,8 @@ export const PlatformUserModal: React.FC<PlatformUserModalProps> = ({
     onSuccess();
     onClose();
   };
+
+
 
   return (
     <div

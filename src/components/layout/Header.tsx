@@ -3,6 +3,7 @@ import { Search, Bell, Calendar, ChevronDown, PanelLeft, LogOut, Shield, Setting
 import { Tooltip } from '../ui/tooltip';
 import { authApi } from '../../api/auth.api';
 import { orgAdminAuthStore } from '../../modules/platform/services/orgAdminAuthStore';
+import { LiveSocketIndicator } from '../ui/LiveSocketIndicator';
 
 export interface HeaderProps {
   userName?: string;
@@ -65,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   const handleLogout = async () => {
     setIsDropdownOpen(false);
     await authApi.logout();
+    window.location.href = '/login';
   };
 
   const handleNavigateTo = (pageId: string) => {
@@ -158,6 +160,9 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Header Action Items */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {/* Realtime WebSocket Connection Indicator */}
+        <LiveSocketIndicator />
+
         {/* Date Selector Pill */}
         <div
           style={{

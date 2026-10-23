@@ -123,7 +123,7 @@ export const Step4AdminAccount: React.FC<Step4AdminAccountProps> = ({
         </div>
 
         {/* Enforce MFA Checkbox */}
-        <div style={{ gridColumn: 'span 2', marginTop: 4 }}>
+        <div style={{ gridColumn: 'span 4', marginTop: 4 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input
               type="checkbox"
@@ -135,6 +135,63 @@ export const Step4AdminAccount: React.FC<Step4AdminAccountProps> = ({
               Enforce Mandatory Two-Factor Authentication (MFA) on First Login
             </span>
           </label>
+        </div>
+
+        {/* Security Onboarding Policy Banner (Option 2) */}
+        <div
+          style={{
+            gridColumn: 'span 4',
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: 8,
+            padding: '12px 14px',
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12
+          }}
+        >
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 6,
+              backgroundColor: '#dbeafe',
+              color: '#2563eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              fontSize: 16
+            }}
+          >
+            ✉️
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 800, color: '#1e3a8a' }}>
+                Automated Welcome Email & Password Setup Link Policy
+              </span>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 800,
+                  backgroundColor: '#dbeafe',
+                  color: '#1d4ed8',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  textTransform: 'uppercase'
+                }}
+              >
+                Zero-Knowledge Security
+              </span>
+            </div>
+            <p style={{ margin: '4px 0 0 0', fontSize: 10.5, color: '#1e40af', lineHeight: 1.5 }}>
+              A cryptographically secure setup link (<code>http://localhost:5173/setup-password?token=...</code>)
+              will be automatically generated and emailed to <strong>{data.primaryAdminEmail || 'the administrator email'}</strong> upon onboarding.
+              The administrator will use this one-time link to create their own private credentials.
+            </p>
+          </div>
         </div>
       </div>
     </div>

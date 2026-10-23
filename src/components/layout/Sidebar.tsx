@@ -35,8 +35,8 @@ export interface SidebarProps {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'platform', label: 'Super Admin', iconName: 'platform' },
   { id: 'dashboard', label: 'Dashboard', iconName: 'dashboard' },
+  { id: 'queue-portal', label: 'Queue & Booking', iconName: 'queue-portal' },
   { id: 'bookings', label: 'Bookings', iconName: 'bookings' },
   { id: 'users', label: 'Users', iconName: 'users' },
   { id: 'tickets', label: 'Tickets', iconName: 'tickets' },
@@ -50,7 +50,6 @@ const NAV_ITEMS: NavItem[] = [
       { id: 'master-booking-form', label: 'Booking Form', iconName: 'master-booking-form' },
       { id: 'form-builder', label: 'Form Builder', iconName: 'form-builder' },
       { id: 'org-portal', label: 'Org Admin Portal', iconName: 'org-portal' },
-      { id: 'login', label: 'Login Portal', iconName: 'login' },
       { id: 'login-form', label: 'Login Form', iconName: 'login-form' },
       { id: 'roles', label: 'Role', iconName: 'roles' },
       { id: 'departments', label: 'Department', iconName: 'departments' },
@@ -417,7 +416,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
       case 'users':
         return <Users size={size} />;
       case 'bookings':
-        return <CalendarCheck size={size} />;
+      case 'queue-portal':
+        return <CalendarCheck size={size} color="#3b82f6" />;
       case 'login':
       case 'login-form':
         return <Lock size={size} />;

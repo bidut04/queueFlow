@@ -9,7 +9,8 @@ import type {
   PlatformAuditLog,
   PlatformSettings,
   OrgType,
-  RegisterOrgInput
+  RegisterOrgInput,
+
 } from '../types/platform';
 import {
   MOCK_ORGANIZATIONS,
@@ -22,10 +23,27 @@ import {
   MOCK_AUDIT_LOGS,
   MOCK_PLATFORM_SETTINGS
 } from '../data/mockPlatformData';
+import { api } from '../../../api/client';
+
+import { authApi } from '../../../api/auth.api';
+import { platformApi } from '../api/platform.api';
+
+
+export interface PasswordSetupInvite {
+  token: string;
+  email: string;
+  name: string;
+  organizationId: string;
+  organizationName: string;
+  createdAt: string;
+  expiresAt: string;
+  isUsed: boolean;
+}
+
 
 class PlatformStore {
   private listeners: Set<() => void> = new Set();
-  
+
   public organizations: Organization[] = [...MOCK_ORGANIZATIONS];
   public tenantAdmins: TenantAdmin[] = [...MOCK_TENANT_ADMINS];
   public platformUsers: PlatformUser[] = [...MOCK_PLATFORM_USERS];
@@ -37,8 +55,27 @@ class PlatformStore {
   public settings: PlatformSettings = { ...MOCK_PLATFORM_SETTINGS };
 
   // Super Admin active context state
-  public currentUser: PlatformUser = MOCK_PLATFORM_USERS[0];
+  public currentUser: PlatformUser = {
+    id: 'super-admin-root',
+    name: 'Super Admin',
+    email: 'admin@gmail.com',
+    role: 'PLATFORM_OWNER',
+    status: 'ACTIVE',
+    lastLogin: 'Just now',
+    mfaStatus: 'ENABLED',
+    createdDate: new Date().toISOString().split('T')[0]
+  };
   public activeTenantContext: Organization | null = null;
+  public lastGeneratedInvite: PasswordSetupInvite | null = null;
+  public isLoading: boolean = false;
+  public isLoadedFromBackend: boolean = false;
+
+
+  constructor() {
+    this.syncCurrentUser();
+    // Automatically trigger initial load from backend
+    this.loadFromBackend();
+  }
 
   public subscribe(listener: () => void) {
     this.listeners.add(listener);
@@ -47,8 +84,63 @@ class PlatformStore {
     };
   }
 
-  private notify() {
+  public notify() {
     this.listeners.forEach((listener) => listener());
+  }
+
+  public syncCurrentUser() {
+    const activeAuth = authApi.getCurrentUser();
+    if (activeAuth?.email) {
+      this.currentUser = {
+        id: 'super-admin-user',
+        name: activeAuth.email.split('@')[0],
+        email: activeAuth.email,
+        role: (activeAuth.role === 'SUPER_ADMIN' || activeAuth.role === 'ADMIN') ? 'PLATFORM_OWNER' : 'PLATFORM_ADMIN',
+        status: 'ACTIVE',
+        lastLogin: 'Just now',
+        mfaStatus: 'ENABLED',
+        createdDate: new Date().toISOString().split('T')[0]
+      };
+    }
+  }
+
+  // --- LIVE BACKEND DATA FETCHING ---
+  public async loadFromBackend(): Promise<void> {
+    try {
+      this.isLoading = true;
+      this.syncCurrentUser();
+
+      const [orgs, shards, users, health, audit, migrations] = await Promise.all([
+        platformApi.getOrganizations(),
+        platformApi.getShards(),
+        platformApi.getPlatformUsers(),
+        platformApi.getSystemHealth(),
+        platformApi.getAuditLogs(),
+        platformApi.getMigrations(),
+      ]);
+
+      if (orgs && orgs.length > 0) this.organizations = orgs;
+      if (shards && shards.length > 0) this.shards = shards;
+      if (users && users.length > 0) {
+        this.platformUsers = users;
+        const match = this.platformUsers.find(
+          (u) => u.email.toLowerCase() === this.currentUser.email.toLowerCase()
+        );
+        if (match) {
+          this.currentUser = match;
+        }
+      }
+      if (health && health.length > 0) this.systemHealth = health;
+      if (audit && audit.length > 0) this.auditLogs = audit;
+      if (migrations && migrations.length > 0) this.migrations = migrations;
+
+      this.isLoadedFromBackend = true;
+    } catch (err) {
+      console.warn('[PlatformStore] Could not load live platform data from backend:', err);
+    } finally {
+      this.isLoading = false;
+      this.notify();
+    }
   }
 
   // --- TENANT CONTEXT SWITCHING ---
@@ -76,7 +168,7 @@ class PlatformStore {
   }
 
   // --- ORGANIZATION MUTATIONS ---
-  public createOrganization(data: {
+  public async createOrganization(data: {
     name: string;
     legalName: string;
     slug: string;
@@ -90,56 +182,66 @@ class PlatformStore {
     primaryAdminPhone?: string;
     planName: string;
     preferredShardId?: string;
-  }): Organization {
-    // Shard assignment respecting consistent shard catalog: select least utilized writable shard
-    const writableShards = this.shards.filter((s) => !s.readOnly && s.status === 'HEALTHY');
-    const selectedShard = data.preferredShardId
-      ? this.shards.find((s) => s.id === data.preferredShardId) || writableShards[0]
-      : writableShards.sort((a, b) => a.utilizationPercent - b.utilizationPercent)[0] || this.shards[0];
+  }): Promise<Organization> {
+    const selectedShardId = data.preferredShardId || this.shards[0]?.id || 'shard_01';
 
-    const newOrgId = `org-${Date.now().toString().slice(-4)}`;
-    const newOrg: Organization = {
-      id: newOrgId,
-      name: data.name,
-      legalName: data.legalName || data.name,
-      slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
-      type: data.type,
-      status: 'ACTIVE',
-      plan: data.planName || 'Professional',
-      subscriptionState: 'ACTIVE',
-      contactEmail: data.contactEmail,
-      contactPhone: data.contactPhone,
-      country: data.country,
-      timezone: data.timezone,
-      branchesCount: 1,
-      usersCount: 1,
-      employeesCount: 5,
-      servicesCount: 4,
-      activeQueuesCount: 1,
-      monthlyBookingsCount: 0,
-      currentShard: selectedShard.id,
-      region: selectedShard.region.split(' ')[0],
-      createdDate: new Date().toISOString().split('T')[0],
-      lastActivity: 'Just now',
-      primaryAdminName: data.primaryAdminName,
-      primaryAdminEmail: data.primaryAdminEmail,
-      primaryAdminPhone: data.primaryAdminPhone
-    };
+    let createdOrg: Organization;
 
-    // Increment tenant count on selected shard
-    selectedShard.tenantCount += 1;
-    selectedShard.utilizationPercent = Math.min(
-      100,
-      Math.round((selectedShard.tenantCount / selectedShard.capacityTenants) * 100)
-    );
+    try {
+      createdOrg = await platformApi.createOrganization({
+        name: data.name,
+        legalName: data.legalName || data.name,
+        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
+        type: data.type,
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+        country: data.country,
+        timezone: data.timezone,
+        primaryAdminName: data.primaryAdminName,
+        primaryAdminEmail: data.primaryAdminEmail,
+        primaryAdminPhone: data.primaryAdminPhone,
+        planName: data.planName || 'standard',
+        preferredShardId: selectedShardId
+      });
+    } catch {
+      // Fallback local creation if offline
+      const newOrgId = `org-${Date.now().toString().slice(-4)}`;
+      createdOrg = {
+        id: newOrgId,
+        name: data.name,
+        legalName: data.legalName || data.name,
+        slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
+        type: data.type,
+        status: 'ACTIVE',
+        plan: data.planName || 'Professional',
+        subscriptionState: 'ACTIVE',
+        contactEmail: data.contactEmail,
+        contactPhone: data.contactPhone,
+        country: data.country,
+        timezone: data.timezone,
+        branchesCount: 1,
+        usersCount: 1,
+        employeesCount: 5,
+        servicesCount: 4,
+        activeQueuesCount: 1,
+        monthlyBookingsCount: 0,
+        currentShard: selectedShardId,
+        region: 'ap-south-1',
+        createdDate: new Date().toISOString().split('T')[0],
+        lastActivity: 'Just now',
+        primaryAdminName: data.primaryAdminName,
+        primaryAdminEmail: data.primaryAdminEmail,
+        primaryAdminPhone: data.primaryAdminPhone
+      };
+    }
 
-    this.organizations = [newOrg, ...this.organizations];
+    this.organizations = [createdOrg, ...this.organizations.filter((o) => o.id !== createdOrg.id)];
 
-    // Create Primary Admin for Tenant
+
     const primaryAdmin: TenantAdmin = {
       id: `tadmin-${Date.now().toString().slice(-4)}`,
-      organizationId: newOrg.id,
-      organizationName: newOrg.name,
+      organizationId: createdOrg.id,
+      organizationName: createdOrg.name,
       name: data.primaryAdminName,
       email: data.primaryAdminEmail,
       phone: data.primaryAdminPhone || data.contactPhone,
@@ -154,25 +256,28 @@ class PlatformStore {
       actor: this.currentUser.name,
       actorRole: this.currentUser.role,
       action: 'ORGANIZATION_CREATED',
-      organizationId: newOrg.id,
-      organizationName: newOrg.name,
+      organizationId: createdOrg.id,
+      organizationName: createdOrg.name,
       resource: 'Organization',
-      resourceId: newOrg.id,
+      resourceId: createdOrg.id,
       result: 'SUCCESS',
-      reason: `Assigned to shard ${selectedShard.id}`
+      reason: `Assigned to shard ${selectedShardId}`
+    });
+
+    this.createPasswordSetupInvite({
+      email: data.primaryAdminEmail,
+      name: data.primaryAdminName,
+      organizationId: createdOrg.id,
+      organizationName: createdOrg.name
     });
 
     this.notify();
-    return newOrg;
+    return createdOrg;
   }
 
   // --- SELF-SERVICE ORGANIZATION REGISTRATION ---
   public submitOrganizationRegistration(data: RegisterOrgInput): Organization {
-    const writableShards = this.shards.filter((s) => !s.readOnly && s.status === 'HEALTHY');
-    const selectedShard = data.preferredShardId
-      ? this.shards.find((s) => s.id === data.preferredShardId) || writableShards[0]
-      : writableShards.sort((a, b) => a.utilizationPercent - b.utilizationPercent)[0] || this.shards[0];
-
+    const selectedShardId = data.preferredShardId || this.shards[0]?.id || 'shard_01';
     const newOrgId = `org-${Date.now().toString().slice(-4)}`;
     const newOrg: Organization = {
       id: newOrgId,
@@ -194,8 +299,8 @@ class PlatformStore {
       servicesCount: 2,
       activeQueuesCount: 1,
       monthlyBookingsCount: 0,
-      currentShard: selectedShard.id,
-      region: selectedShard.region.split(' ')[0],
+      currentShard: selectedShardId,
+      region: 'ap-south-1',
       createdDate: new Date().toISOString().split('T')[0],
       lastActivity: 'Just now',
       primaryAdminName: data.primaryAdminName,
@@ -214,7 +319,7 @@ class PlatformStore {
       email: data.primaryAdminEmail,
       phone: data.primaryAdminPhone || data.contactPhone,
       role: 'TENANT_OWNER',
-      status: 'SUSPENDED', // will become active upon approval
+      status: 'SUSPENDED',
       lastLogin: 'Never',
       createdDate: new Date().toISOString().split('T')[0]
     };
@@ -232,48 +337,127 @@ class PlatformStore {
       reason: `Self-registration submitted with plan ${data.planName}. Awaiting Super Admin review.`
     });
 
+    this.createPasswordSetupInvite({
+      email: data.primaryAdminEmail,
+      name: data.primaryAdminName,
+      organizationId: newOrg.id,
+      organizationName: newOrg.name
+    });
+
     this.notify();
     return newOrg;
   }
 
+  // --- PASSWORD SETUP INVITE MANAGEMENT ---
+  public createPasswordSetupInvite(data: {
+    email: string;
+    name: string;
+    organizationId: string;
+    organizationName: string;
+  }): PasswordSetupInvite {
+    const rawTokens = this.getPasswordInvites();
+    const token = `inv_${Math.random().toString(36).substring(2, 9)}_${Date.now().toString(36)}`;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const invite: PasswordSetupInvite = {
+      token,
+      email: data.email.toLowerCase().trim(),
+      name: data.name,
+      organizationId: data.organizationId,
+      organizationName: data.organizationName,
+      createdAt: new Date().toISOString(),
+      expiresAt,
+      isUsed: false
+    };
+
+    const updated = [invite, ...rawTokens];
+    localStorage.setItem('qf_password_invites', JSON.stringify(updated));
+    this.lastGeneratedInvite = invite;
+    this.notify();
+    return invite;
+  }
+
+  public getPasswordInvites(): PasswordSetupInvite[] {
+    try {
+      const stored = localStorage.getItem('qf_password_invites');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  public getInviteByToken(token: string): PasswordSetupInvite | null {
+    const invites = this.getPasswordInvites();
+    return invites.find((inv) => inv.token === token) || null;
+  }
+
+  public completePasswordSetup(token: string, password: string): { success: boolean; message: string; invite?: PasswordSetupInvite } {
+    const invites = this.getPasswordInvites();
+    const target = invites.find((inv) => inv.token === token);
+
+    if (!target) {
+      return { success: false, message: 'Invalid or expired setup token link.' };
+    }
+
+    if (target.isUsed) {
+      return { success: false, message: 'This password setup link has already been used.' };
+    }
+
+    if (new Date(target.expiresAt).getTime() < Date.now()) {
+      return { success: false, message: 'This password setup link has expired.' };
+    }
+
+    target.isUsed = true;
+    localStorage.setItem('qf_password_invites', JSON.stringify(invites));
+
+    try {
+      const storedCreds = localStorage.getItem('qf_user_credentials') || '{}';
+      const parsedCreds = JSON.parse(storedCreds);
+      parsedCreds[target.email.toLowerCase()] = password;
+      localStorage.setItem('qf_user_credentials', JSON.stringify(parsedCreds));
+    } catch {
+      // ignore
+    }
+
+    this.notify();
+    return { success: true, message: 'Password configured successfully!', invite: target };
+  }
+
   // --- PERMISSION & APPROVAL WORKFLOWS ---
-  public approveRegistration(orgId: string, remarks?: string): void {
+  public async approveRegistration(orgId: string, remarks?: string): Promise<void> {
     const org = this.organizations.find((o) => o.id === orgId);
-    if (!org) return;
+    if (org) {
+      org.status = 'ACTIVE';
+      org.registrationStatus = 'APPROVED';
+      org.subscriptionState = 'ACTIVE';
+      org.remarks = remarks || 'Approved by Super Admin';
+      org.reviewedBy = this.currentUser.name;
+      org.reviewedAt = new Date().toLocaleString();
+      org.lastActivity = 'Just now';
 
-    org.status = 'ACTIVE';
-    org.registrationStatus = 'APPROVED';
-    org.subscriptionState = 'ACTIVE';
-    org.remarks = remarks || 'Approved by Super Admin';
-    org.reviewedBy = this.currentUser.name;
-    org.reviewedAt = new Date().toLocaleString();
-    org.lastActivity = 'Just now';
+      this.tenantAdmins.forEach((adm) => {
+        if (adm.organizationId === orgId) {
+          adm.status = 'ACTIVE';
+        }
+      });
+    }
 
-    // Activate associated tenant admins
-    this.tenantAdmins.forEach((adm) => {
-      if (adm.organizationId === orgId) {
-        adm.status = 'ACTIVE';
-      }
-    });
-
-    // Update shard tenant capacity
-    const shard = this.shards.find((s) => s.id === org.currentShard);
-    if (shard) {
-      shard.tenantCount += 1;
-      shard.utilizationPercent = Math.min(
-        100,
-        Math.round((shard.tenantCount / shard.capacityTenants) * 100)
-      );
+    try {
+      await api.post(`/platform/organizations/${orgId}/activate`, {
+        reason: remarks || 'Approved by Super Admin'
+      });
+      await this.loadFromBackend();
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync approveRegistration to backend:', err);
     }
 
     this.addAuditLog({
       actor: this.currentUser.name,
       actorRole: this.currentUser.role,
       action: 'ORGANIZATION_APPROVED',
-      organizationId: org.id,
-      organizationName: org.name,
+      organizationId: orgId,
+      organizationName: org?.name,
       resource: 'Organization',
-      resourceId: org.id,
+      resourceId: orgId,
       result: 'SUCCESS',
       reason: remarks ? `Approved: ${remarks}` : 'Approved by Super Admin'
     });
@@ -281,25 +465,34 @@ class PlatformStore {
     this.notify();
   }
 
-  public holdRegistration(orgId: string, remarks: string): void {
+  public async holdRegistration(orgId: string, remarks: string): Promise<void> {
     const org = this.organizations.find((o) => o.id === orgId);
-    if (!org) return;
+    if (org) {
+      org.status = 'HOLD';
+      org.registrationStatus = 'HOLD';
+      org.remarks = remarks;
+      org.reviewedBy = this.currentUser.name;
+      org.reviewedAt = new Date().toLocaleString();
+      org.lastActivity = 'Just now';
+    }
 
-    org.status = 'HOLD';
-    org.registrationStatus = 'HOLD';
-    org.remarks = remarks;
-    org.reviewedBy = this.currentUser.name;
-    org.reviewedAt = new Date().toLocaleString();
-    org.lastActivity = 'Just now';
+    try {
+      await api.post(`/platform/organizations/${orgId}/suspend`, {
+        reason: `Registration on hold: ${remarks}`
+      });
+      await this.loadFromBackend();
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync holdRegistration to backend:', err);
+    }
 
     this.addAuditLog({
       actor: this.currentUser.name,
       actorRole: this.currentUser.role,
       action: 'ORGANIZATION_PUT_ON_HOLD',
-      organizationId: org.id,
-      organizationName: org.name,
+      organizationId: orgId,
+      organizationName: org?.name,
       resource: 'Organization',
-      resourceId: org.id,
+      resourceId: orgId,
       result: 'SUCCESS',
       reason: `Put on hold: ${remarks}`
     });
@@ -307,25 +500,34 @@ class PlatformStore {
     this.notify();
   }
 
-  public rejectRegistration(orgId: string, remarks: string): void {
+  public async rejectRegistration(orgId: string, remarks: string): Promise<void> {
     const org = this.organizations.find((o) => o.id === orgId);
-    if (!org) return;
+    if (org) {
+      org.status = 'REJECTED';
+      org.registrationStatus = 'REJECTED';
+      org.remarks = remarks;
+      org.reviewedBy = this.currentUser.name;
+      org.reviewedAt = new Date().toLocaleString();
+      org.lastActivity = 'Just now';
+    }
 
-    org.status = 'REJECTED';
-    org.registrationStatus = 'REJECTED';
-    org.remarks = remarks;
-    org.reviewedBy = this.currentUser.name;
-    org.reviewedAt = new Date().toLocaleString();
-    org.lastActivity = 'Just now';
+    try {
+      await api.post(`/platform/organizations/${orgId}/archive`, {
+        reason: `Registration rejected: ${remarks}`
+      });
+      await this.loadFromBackend();
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync rejectRegistration to backend:', err);
+    }
 
     this.addAuditLog({
       actor: this.currentUser.name,
       actorRole: this.currentUser.role,
       action: 'ORGANIZATION_REJECTED',
-      organizationId: org.id,
-      organizationName: org.name,
+      organizationId: orgId,
+      organizationName: org?.name,
       resource: 'Organization',
-      resourceId: org.id,
+      resourceId: orgId,
       result: 'SUCCESS',
       reason: `Rejected: ${remarks}`
     });
@@ -343,30 +545,39 @@ class PlatformStore {
     this.notify();
   }
 
-  public suspendOrganization(orgId: string, reason: string) {
+  public async suspendOrganization(orgId: string, reason: string): Promise<void> {
     const org = this.organizations.find((o) => o.id === orgId);
-    if (!org) return;
+    const previousStatus = org?.status || 'ACTIVE';
 
-    const previousStatus = org.status;
-    org.status = 'SUSPENDED';
-    org.subscriptionState = 'SUSPENDED';
-    org.lastActivity = 'Just now';
+    if (org) {
+      org.status = 'SUSPENDED';
+      org.subscriptionState = 'SUSPENDED';
+      org.lastActivity = 'Just now';
 
-    // Suspend associated tenant admins
-    this.tenantAdmins.forEach((adm) => {
-      if (adm.organizationId === orgId) {
-        adm.status = 'SUSPENDED';
-      }
-    });
+      this.tenantAdmins.forEach((adm) => {
+        if (adm.organizationId === orgId) {
+          adm.status = 'SUSPENDED';
+        }
+      });
+    }
+
+    try {
+      await api.post(`/platform/organizations/${orgId}/suspend`, {
+        reason: reason || 'Suspended by Super Admin'
+      });
+      await this.loadFromBackend();
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync suspendOrganization to backend:', err);
+    }
 
     this.addAuditLog({
       actor: this.currentUser.name,
       actorRole: this.currentUser.role,
       action: 'ORGANIZATION_SUSPENDED',
-      organizationId: org.id,
-      organizationName: org.name,
+      organizationId: orgId,
+      organizationName: org?.name,
       resource: 'Organization',
-      resourceId: org.id,
+      resourceId: orgId,
       result: 'SUCCESS',
       reason: `Status changed from ${previousStatus} to SUSPENDED. Reason: ${reason}`
     });
@@ -374,30 +585,39 @@ class PlatformStore {
     this.notify();
   }
 
-  public activateOrganization(orgId: string) {
+  public async activateOrganization(orgId: string): Promise<void> {
     const org = this.organizations.find((o) => o.id === orgId);
-    if (!org) return;
+    const previousStatus = org?.status || 'SUSPENDED';
 
-    const previousStatus = org.status;
-    org.status = 'ACTIVE';
-    org.subscriptionState = 'ACTIVE';
-    org.lastActivity = 'Just now';
+    if (org) {
+      org.status = 'ACTIVE';
+      org.subscriptionState = 'ACTIVE';
+      org.lastActivity = 'Just now';
 
-    // Reactivate associated tenant admins
-    this.tenantAdmins.forEach((adm) => {
-      if (adm.organizationId === orgId) {
-        adm.status = 'ACTIVE';
-      }
-    });
+      this.tenantAdmins.forEach((adm) => {
+        if (adm.organizationId === orgId) {
+          adm.status = 'ACTIVE';
+        }
+      });
+    }
+
+    try {
+      await api.post(`/platform/organizations/${orgId}/activate`, {
+        reason: 'Restored to ACTIVE by Super Admin'
+      });
+      await this.loadFromBackend();
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync activateOrganization to backend:', err);
+    }
 
     this.addAuditLog({
       actor: this.currentUser.name,
       actorRole: this.currentUser.role,
       action: 'ORGANIZATION_ACTIVATED',
-      organizationId: org.id,
-      organizationName: org.name,
+      organizationId: orgId,
+      organizationName: org?.name,
       resource: 'Organization',
-      resourceId: org.id,
+      resourceId: orgId,
       result: 'SUCCESS',
       reason: `Status restored from ${previousStatus} to ACTIVE`
     });
@@ -406,13 +626,13 @@ class PlatformStore {
   }
 
   // --- TENANT ADMIN MANAGEMENT ---
-  public createTenantAdmin(data: {
+  public async createTenantAdmin(data: {
     organizationId: string;
     name: string;
     email: string;
     phone: string;
     role: 'TENANT_OWNER' | 'TENANT_ADMIN';
-  }) {
+  }): Promise<void> {
     const org = this.organizations.find((o) => o.id === data.organizationId);
     const newAdmin: TenantAdmin = {
       id: `tadmin-${Date.now().toString().slice(-4)}`,
@@ -430,6 +650,17 @@ class PlatformStore {
     this.tenantAdmins = [newAdmin, ...this.tenantAdmins];
     if (org) org.usersCount += 1;
 
+    try {
+      await api.post(`/platform/organizations/${data.organizationId}/admins`, {
+        adminFullName: data.name,
+        adminEmail: data.email,
+        adminPhone: data.phone,
+        role: data.role
+      });
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync createTenantAdmin to backend:', err);
+    }
+
     this.addAuditLog({
       actor: this.currentUser.name,
       actorRole: this.currentUser.role,
@@ -445,11 +676,11 @@ class PlatformStore {
   }
 
   // --- PLATFORM USERS MANAGEMENT ---
-  public invitePlatformUser(data: {
+  public async invitePlatformUser(data: {
     name: string;
     email: string;
     role: 'PLATFORM_OWNER' | 'PLATFORM_ADMIN' | 'PLATFORM_SUPPORT';
-  }) {
+  }): Promise<void> {
     const newUser: PlatformUser = {
       id: `puser-${Date.now().toString().slice(-4)}`,
       name: data.name,
@@ -462,6 +693,16 @@ class PlatformStore {
     };
 
     this.platformUsers = [newUser, ...this.platformUsers];
+
+    try {
+      await api.post('/platform/users', {
+        email: data.email,
+        role: data.role
+      });
+      await this.loadFromBackend();
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync invitePlatformUser to backend:', err);
+    }
 
     this.addAuditLog({
       actor: this.currentUser.name,
@@ -477,7 +718,7 @@ class PlatformStore {
   }
 
   // --- SHARD MIGRATION WORKFLOW ---
-  public startMigration(orgId: string, destinationShardId: string, notes?: string) {
+  public async startMigration(orgId: string, destinationShardId: string, notes?: string): Promise<void> {
     const org = this.organizations.find((o) => o.id === orgId);
     if (!org) return;
 
@@ -497,6 +738,17 @@ class PlatformStore {
 
     this.migrations = [newMigration, ...this.migrations];
 
+    try {
+      await api.post('/platform/migrations', {
+        tenantId: org.id,
+        targetShardId: destinationShardId,
+        notes
+      });
+      await this.loadFromBackend();
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync startMigration to backend:', err);
+    }
+
     this.addAuditLog({
       actor: this.currentUser.name,
       actorRole: this.currentUser.role,
@@ -512,13 +764,20 @@ class PlatformStore {
     this.notify();
   }
 
-  public rollbackMigration(migrationId: string) {
+  public async rollbackMigration(migrationId: string): Promise<void> {
     const mig = this.migrations.find((m) => m.id === migrationId);
     if (!mig) return;
 
     mig.status = 'ROLLING_BACK';
     mig.progressPercent = 100;
     mig.completedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+    try {
+      await api.post(`/platform/migrations/${migrationId}/rollback`, {});
+      await this.loadFromBackend();
+    } catch (err) {
+      console.warn('[PlatformStore] Could not sync rollbackMigration to backend:', err);
+    }
 
     this.addAuditLog({
       actor: this.currentUser.name,
@@ -540,8 +799,8 @@ class PlatformStore {
     const newLog: PlatformAuditLog = {
       id: `aud-${Date.now().toString().slice(-4)}`,
       timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      ipAddress: '192.168.1.100',
-      userAgent: navigator.userAgent || 'Mozilla/5.0 (Windows NT 10.0)',
+      ipAddress: '127.0.0.1',
+      userAgent: navigator.userAgent || 'Mozilla/5.0',
       ...entry
     };
     this.auditLogs = [newLog, ...this.auditLogs];

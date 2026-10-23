@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, CheckCircle } from 'lucide-react';
 import { GlobalTable } from '../components/table/GlobalTable';
 import { Badge } from '../components/ui/Badge';
@@ -6,10 +6,17 @@ import { Button } from '../components/ui/Button';
 import { CustomerCell } from '../components/ui/CustomerCell';
 import type { TableColumn } from '../types/table';
 import type { Booking } from '../types/booking';
-import { RECENT_BOOKINGS_DATA } from '../data/mockData';
+import { useBookings } from '../api/hooks/bookingHooks';
 
 export const TicketsPage: React.FC = () => {
-  const [tickets, setTickets] = useState<Booking[]>(RECENT_BOOKINGS_DATA);
+  const { data: bookingsList = [] } = useBookings();
+  const [tickets, setTickets] = useState<Booking[]>([]);
+
+  useEffect(() => {
+    if (bookingsList) {
+      setTickets(bookingsList);
+    }
+  }, [bookingsList]);
 
   const handleCallNextTicket = (id: string) => {
     setTickets((prev) =>

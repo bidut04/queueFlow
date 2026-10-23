@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MapPin } from 'lucide-react';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { BookingTrendChart } from '../components/dashboard/BookingTrendChart';
@@ -11,14 +11,14 @@ import { Badge } from '../components/ui/Badge';
 import { CustomerCell } from '../components/ui/CustomerCell';
 import type { TableColumn } from '../types/table';
 import type { Booking } from '../types/booking';
+import type { MetricCardData } from '../types/dashboard';
 import type { NavPageId } from '../types/navigation';
+import { useBookings } from '../api/hooks/bookingHooks';
 import {
-  METRIC_CARDS_DATA,
   BOOKING_TREND_DATA,
   BRANCH_PERFORMANCE_DATA,
   RECENT_ACTIVITIES_DATA,
-  POPULAR_SERVICES_DATA,
-  RECENT_BOOKINGS_DATA
+  POPULAR_SERVICES_DATA
 } from '../data/mockData';
 
 export interface DashboardPageProps {
@@ -26,6 +26,73 @@ export interface DashboardPageProps {
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
+  const { data: bookingsList = [] } = useBookings();
+
+  const dynamicMetrics = useMemo<MetricCardData[]>(() => {
+    const total = bookingsList.length;
+    const waiting = bookingsList.filter((b) => b.status === 'Waiting').length;
+    const completed = bookingsList.filter((b) => b.status === 'Completed').length;
+    const inProgress = bookingsList.filter((b) => b.status === 'In Progress').length;
+
+    return [
+      {
+        id: 'total-bookings',
+        title: 'Total Bookings',
+        value: total.toString(),
+        change: total > 0 ? '+100%' : '0%',
+        changePeriod: 'all time',
+        trend: 'up',
+        iconName: 'users',
+        sparklineData: [0, 0, 0, 0, 0, 0, total],
+        colorTheme: 'blue'
+      },
+      {
+        id: 'todays-tickets',
+        title: "Active In Queue",
+        value: (waiting + inProgress).toString(),
+        change: '0%',
+        changePeriod: 'today',
+        trend: 'up',
+        iconName: 'calendar',
+        sparklineData: [0, 0, 0, 0, 0, 0, waiting + inProgress],
+        colorTheme: 'emerald'
+      },
+      {
+        id: 'avg-waiting-time',
+        title: 'Completed Services',
+        value: completed.toString(),
+        change: '0%',
+        changePeriod: 'today',
+        trend: 'up',
+        iconName: 'check',
+        sparklineData: [0, 0, 0, 0, 0, 0, completed],
+        colorTheme: 'purple'
+      },
+      {
+        id: 'service-accuracy',
+        title: 'Waiting Customers',
+        value: waiting.toString(),
+        change: '0%',
+        changePeriod: 'today',
+        trend: 'up',
+        iconName: 'clock',
+        sparklineData: [0, 0, 0, 0, 0, 0, waiting],
+        colorTheme: 'amber'
+      },
+      {
+        id: 'total-customers',
+        title: 'Total Customers',
+        value: total.toString(),
+        change: '0%',
+        changePeriod: 'all time',
+        trend: 'up',
+        iconName: 'userCheck',
+        sparklineData: [0, 0, 0, 0, 0, 0, total],
+        colorTheme: 'pink'
+      }
+    ];
+  }, [bookingsList]);
+
   // Columns definition for Recent Bookings Global Table
   const bookingColumns: TableColumn<Booking>[] = [
     {
@@ -106,7 +173,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
     <div className="flex flex-col gap-3 sm:gap-4 w-full">
       {/* Top 5 Metrics Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        {METRIC_CARDS_DATA.map((card) => (
+        {dynamicMetrics.map((card) => (
           <MetricCard key={card.id} data={card} />
         ))}
       </div>
@@ -119,7 +186,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
 
           {/* TanStack Table with 5 data rows per page and Pagination enabled */}
           <GlobalTable<Booking>
-            data={RECENT_BOOKINGS_DATA}
+            data={bookingsList}
             columns={bookingColumns}
             keyExtractor={(row) => row.id}
             title="Recent Bookings"

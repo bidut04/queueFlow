@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { X, Check, Building2, User, CreditCard, Database, ArrowRight, ArrowLeft } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { useCreateOrganization } from '../hooks';
 import type { OrgType } from '../types/platform';
+import { toast } from '../../../components/ui/Toast';
 
 interface CreateOrganizationModalProps {
   isOpen: boolean;
@@ -14,16 +16,18 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
   onClose,
   onCreated
 }) => {
+  const createOrgMutation = useCreateOrganization();
   const [step, setStep] = useState<number>(1);
 
   // Step 1 - Org Info
+
   const [name, setName] = useState('');
   const [legalName, setLegalName] = useState('');
   const [slug, setSlug] = useState('');
   const [type, setType] = useState<OrgType>('BANK');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
-  const [country, setCountry] = useState('United States');
+  const [country, setCountry] = useState('US');
   const [timezone, setTimezone] = useState('America/New_York');
 
   // Step 2 - Primary Admin
@@ -36,7 +40,7 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
 
   // Step 4 - Shard
   const availableShards = platformStore.shards.filter((s) => !s.readOnly);
-  const [preferredShard, setPreferredShard] = useState(availableShards[0]?.id || 'shard-us-east-1a');
+  const [preferredShard, setPreferredShard] = useState(availableShards[0]?.id || 'shard_01');
 
   if (!isOpen) return null;
 
@@ -47,14 +51,14 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !contactEmail || !adminName || !adminEmail) {
-      alert('Please fill in all required organization and admin fields.');
+      toast.warning('Please fill in all required organization and admin fields.');
       return;
     }
 
-    platformStore.createOrganization({
+    const payload = {
       name,
       legalName: legalName || name,
       slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
@@ -68,11 +72,19 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
       primaryAdminPhone: adminPhone,
       planName: selectedPlan,
       preferredShardId: preferredShard
-    });
+    };
 
-    onCreated();
-    onClose();
+    try {
+      const createdOrg = await createOrgMutation.mutateAsync(payload);
+      toast.success(`Organization "${createdOrg.name}" created successfully!`);
+      await platformStore.createOrganization(payload);
+      onCreated();
+      onClose();
+    } catch (err: any) {
+      toast.fromApiError(err, 'Failed to create organization');
+    }
   };
+
 
   return (
     <div
@@ -349,11 +361,12 @@ export const CreateOrganizationModal: React.FC<CreateOrganizationModalProps> = (
           )}
 
           {step === 3 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14 }}>
               {[
-                { name: 'Starter', price: '$199/mo', desc: 'Up to 5 Branches, Standard Queue Engine' },
-                { name: 'Professional', price: '$499/mo', desc: 'Up to 25 Branches, Advanced Routing & SLA Analytics' },
-                { name: 'Enterprise', price: '$1,299/mo', desc: 'Unlimited Branches, Multi-region Shard, Dedicated Manager' }
+                { name: 'Free', price: '$0/mo', desc: '1 Branch, 2 Users, Standard Queue Engine' },
+                { name: 'Starter', price: '$49/mo', desc: 'Up to 3 Branches, 10 Users, Standard Queue Engine' },
+                { name: 'Professional', price: '$149/mo', desc: 'Up to 10 Branches, Advanced Routing & SLA Analytics' },
+                { name: 'Enterprise', price: '$499/mo', desc: 'Unlimited Branches, Multi-region Shard, Dedicated Manager' }
               ].map((p) => {
                 const isSelected = selectedPlan === p.name;
                 return (

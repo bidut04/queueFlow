@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, UserPlus } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { useCreateTenantAdmin } from '../hooks';
 import type { Organization } from '../types/platform';
 
 interface TenantAdminModalProps {
@@ -18,6 +19,7 @@ export const TenantAdminModal: React.FC<TenantAdminModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  const createAdminMutation = useCreateTenantAdmin();
   const [orgId, setOrgId] = useState(defaultOrgId || organizations[0]?.id || '');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -26,14 +28,23 @@ export const TenantAdminModal: React.FC<TenantAdminModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !orgId) {
       alert('Please fill in Name, Email, and Organization.');
       return;
     }
 
-    platformStore.createTenantAdmin({
+    try {
+      await createAdminMutation.mutateAsync({
+        organizationId: orgId,
+        input: { name, email, phone, role }
+      });
+    } catch {
+      // Fallback
+    }
+
+    await platformStore.createTenantAdmin({
       organizationId: orgId,
       name,
       email,
@@ -44,6 +55,8 @@ export const TenantAdminModal: React.FC<TenantAdminModalProps> = ({
     onSuccess();
     onClose();
   };
+
+
 
   return (
     <div

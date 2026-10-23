@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, RotateCcw } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { usePlatformMigrations, useRollbackMigration } from '../hooks';
 import type { TenantMigrationJob, PlatformPageId } from '../types/platform';
 import type { TableColumn } from '../../../types/table';
 import { GlobalTable } from '../../../components/table/GlobalTable';
@@ -11,20 +12,30 @@ interface MigrationsPageProps {
 }
 
 export const MigrationsPage: React.FC<MigrationsPageProps> = () => {
-  const [migrations, setMigrations] = useState<TenantMigrationJob[]>(platformStore.migrations);
+  const { data: liveMigrations } = usePlatformMigrations();
+  const rollbackMutation = useRollbackMigration();
+  const [storeMigrations, setStoreMigrations] = useState<TenantMigrationJob[]>(platformStore.migrations);
   const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
-      setMigrations([...platformStore.migrations]);
+      setStoreMigrations([...platformStore.migrations]);
     });
   }, []);
 
-  const handleRollback = (migrationId: string, orgName: string) => {
+  const migrations = (liveMigrations && liveMigrations.length > 0) ? liveMigrations : storeMigrations;
+
+  const handleRollback = async (migrationId: string, orgName: string) => {
     if (window.confirm(`SECURITY ROLLBACK: Are you sure you want to rollback migration ${migrationId} for ${orgName}? The previous shard mapping will be restored.`)) {
+      try {
+        await rollbackMutation.mutateAsync({ id: migrationId });
+      } catch {
+        // Fallback
+      }
       platformStore.rollbackMigration(migrationId);
     }
   };
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -199,7 +210,7 @@ export const MigrationsPage: React.FC<MigrationsPageProps> = () => {
         shards={platformStore.shards}
         isOpen={isMigrationModalOpen}
         onClose={() => setIsMigrationModalOpen(false)}
-        onSuccess={() => setMigrations([...platformStore.migrations])}
+        onSuccess={() => setStoreMigrations([...platformStore.migrations])}
       />
     </div>
   );

@@ -12,8 +12,7 @@ import {
   Settings,
   ClipboardCheck,
   PanelLeftClose,
-  HelpCircle,
-  Cpu
+  PanelLeftOpen
 } from 'lucide-react';
 import type { PlatformPageId } from '../types/platform';
 import { platformStore } from '../services/platformState';
@@ -25,7 +24,7 @@ interface PlatformSidebarProps {
   onSelectTab: (tab: PlatformPageId) => void;
 }
 
-const COLLAPSED_WIDTH = 54;
+const COLLAPSED_WIDTH = 60;
 const MIN_EXPANDED_WIDTH = 190;
 const MAX_EXPANDED_WIDTH = 380;
 const DEFAULT_EXPANDED_WIDTH = 215;
@@ -34,7 +33,15 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
   activeTab,
   onSelectTab
 }) => {
-  const pendingCount = platformStore.organizations.filter((o) => o.status === 'PENDING').length;
+  const [pendingCount, setPendingCount] = useState<number>(() =>
+    platformStore.organizations.filter((o) => o.status === 'PENDING').length
+  );
+
+  useEffect(() => {
+    return platformStore.subscribe(() => {
+      setPendingCount(platformStore.organizations.filter((o) => o.status === 'PENDING').length);
+    });
+  }, []);
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     try {
@@ -99,10 +106,10 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
       isInitialMount.current = false;
       gsap.set(asideRef.current, {
         width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
-        margin: isCollapsed ? '10px 0 10px 10px' : '0px',
-        borderRadius: isCollapsed ? 24 : 0,
-        height: isCollapsed ? 'calc(100vh - 20px)' : '100%',
-        padding: isCollapsed ? '14px 6px 12px 6px' : '10px 8px'
+        margin: '0px',
+        borderRadius: 0,
+        height: '100%',
+        padding: isCollapsed ? '10px 0 12px 0' : '10px 8px'
       });
       return;
     }
@@ -110,11 +117,11 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
     const aside = asideRef.current;
     gsap.to(aside, {
       width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
-      margin: isCollapsed ? '10px 0 10px 10px' : '0px',
-      borderRadius: isCollapsed ? 24 : 0,
-      height: isCollapsed ? 'calc(100vh - 20px)' : '100%',
-      padding: isCollapsed ? '14px 6px 12px 6px' : '10px 8px',
-      duration: 0.36,
+      margin: '0px',
+      borderRadius: 0,
+      height: '100%',
+      padding: isCollapsed ? '10px 0 12px 0' : '10px 8px',
+      duration: 0.28,
       ease: 'power3.inOut'
     });
   }, [isCollapsed]);
@@ -134,8 +141,8 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
 
     const top = targetRect.top - navRect.top + navRef.current.scrollTop;
     const height = targetRect.height;
-    const left = isCollapsed ? (navRect.width - 34) / 2 : 0;
-    const width = isCollapsed ? 34 : targetRect.width;
+    const left = isCollapsed ? (navRect.width - 38) / 2 : 0;
+    const width = isCollapsed ? 38 : targetRect.width;
 
     gsap.to(activePillRef.current, {
       top,
@@ -219,18 +226,17 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
         width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
         minWidth: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
         maxWidth: MAX_EXPANDED_WIDTH,
-        backgroundColor: '#090d16', // Preserves exact platform sidebar background color
-        borderRight: isCollapsed ? 'none' : '1px solid #1e293b',
-        border: isCollapsed ? '1px solid #1e293b' : undefined,
-        borderRadius: isCollapsed ? 24 : 0,
-        boxShadow: isCollapsed ? '0 10px 25px -5px rgba(0, 0, 0, 0.5)' : 'none',
+        backgroundColor: '#090d16',
+        borderRight: '1px solid #1e293b',
+        borderRadius: 0,
+        boxShadow: 'none',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: isCollapsed ? '14px 6px 12px 6px' : '10px 8px',
-        margin: isCollapsed ? '10px 0 10px 10px' : '0px',
+        padding: isCollapsed ? '10px 0 12px 0' : '10px 8px',
+        margin: '0px',
         flexShrink: 0,
-        height: isCollapsed ? 'calc(100vh - 20px)' : '100%',
+        height: '100%',
         position: 'relative',
         userSelect: isDragging ? 'none' : 'auto'
       }}
@@ -293,38 +299,38 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
             </Tooltip>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginBottom: 6 }}>
-            <Tooltip content="Expand Control Plane (Ctrl+B)" side="right">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginBottom: 6, flexShrink: 0 }}>
+            <Tooltip content="Expand sidebar (Ctrl+B)" side="right">
               <button
                 onClick={() => setIsCollapsed(false)}
                 aria-label="Expand sidebar"
                 style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 10,
-                  backgroundColor: '#3730a3',
-                  border: 'none',
+                  width: 38,
+                  height: 38,
+                  borderRadius: 8,
+                  border: '1px solid #1e293b',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  color: '#94a3b8',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  boxShadow: '0 3px 8px rgba(55, 48, 163, 0.4)',
                   transition: 'all 0.15s ease'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#4338ca';
-                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.backgroundColor = '#1e293b';
+                  e.currentTarget.style.color = '#ffffff';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#3730a3';
-                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
+                  e.currentTarget.style.color = '#94a3b8';
                 }}
               >
-                <Cpu size={16} color="#ffffff" />
+                <PanelLeftOpen size={16} />
               </button>
             </Tooltip>
 
-            <div style={{ width: 22, height: 1, backgroundColor: '#1e293b', margin: '10px 0 4px 0' }} />
+            <div style={{ width: 28, height: 1, backgroundColor: '#1e293b', margin: '8px 0 4px 0' }} />
           </div>
         )}
 
@@ -337,10 +343,13 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
             display: 'flex',
             flexDirection: 'column',
             alignItems: isCollapsed ? 'center' : 'stretch',
-            gap: isCollapsed ? 6 : 4,
+            gap: isCollapsed ? 4 : 4,
             overflowY: 'auto',
+            overflowX: 'hidden',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
             flex: 1,
-            padding: isCollapsed ? '4px 0' : '0 2px 0 0'
+            padding: isCollapsed ? '2px 0' : '0 2px 0 0'
           }}
         >
           {/* GSAP Sliding Indicator */}
@@ -348,13 +357,13 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
             ref={activePillRef}
             className={`qf-nav-sliding-pill ${isCollapsed ? 'collapsed' : ''}`}
             style={{
-              backgroundColor: '#3730a3',
-              boxShadow: '0 2px 10px rgba(55, 48, 163, 0.5)',
+              backgroundColor: '#4f46e5',
+              boxShadow: '0 2px 10px rgba(79, 70, 229, 0.45)',
               opacity: 0
             }}
           />
 
-          {navItems.filter((item) => (isCollapsed ? item.id !== 'settings' : true)).map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
 
@@ -367,9 +376,9 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                       onClick={() => onSelectTab(item.id)}
                       aria-label={item.label}
                       style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 9,
+                        width: 38,
+                        height: 38,
+                        borderRadius: 8,
                         border: 'none',
                         backgroundColor: 'transparent',
                         color: isActive ? '#ffffff' : '#94a3b8',
@@ -387,17 +396,18 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                         if (!isActive) e.currentTarget.style.color = '#94a3b8';
                       }}
                     >
-                      <Icon size={16} color={isActive ? '#818cf8' : '#94a3b8'} />
+                      <Icon size={17} color={isActive ? '#ffffff' : '#94a3b8'} />
                       {item.badge && item.badge > 0 ? (
                         <span
                           style={{
                             position: 'absolute',
-                            top: 4,
-                            right: 4,
+                            top: 5,
+                            right: 5,
                             width: 8,
                             height: 8,
                             borderRadius: '50%',
-                            backgroundColor: '#f59e0b'
+                            backgroundColor: '#f59e0b',
+                            border: '1.5px solid #090d16'
                           }}
                         />
                       ) : null}
@@ -490,89 +500,26 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 10,
+            gap: 6,
             width: '100%',
             paddingTop: 8,
-            borderTop: '1px solid #1e293b'
+            borderTop: '1px solid #1e293b',
+            flexShrink: 0
           }}
         >
-          <Tooltip content="System Health" side="right">
-            <button
-              onClick={() => onSelectTab('system-health')}
-              aria-label="System Health"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: '#94a3b8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#1e293b';
-                e.currentTarget.style.color = '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#94a3b8';
-              }}
-            >
-              <HelpCircle size={16} />
-            </button>
-          </Tooltip>
-
-          <Tooltip content="Platform Settings" side="right">
-            <button
-              data-nav-id="settings"
-              onClick={() => onSelectTab('settings')}
-              aria-label="Settings"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                border: 'none',
-                backgroundColor: activeTab === 'settings' ? '#3730a3' : 'transparent',
-                color: activeTab === 'settings' ? '#ffffff' : '#94a3b8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (activeTab !== 'settings') {
-                  e.currentTarget.style.backgroundColor = '#1e293b';
-                  e.currentTarget.style.color = '#ffffff';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== 'settings') {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#94a3b8';
-                }
-              }}
-            >
-              <Settings size={16} />
-            </button>
-          </Tooltip>
-
-          <Tooltip content="Platform Super Admin" side="right">
+          <Tooltip content="Super Admin • Platform Owner" side="right">
             <div
               onClick={() => onSelectTab('settings')}
               style={{
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 borderRadius: '50%',
                 overflow: 'hidden',
                 cursor: 'pointer',
-                border: '2px solid #334155',
+                border: activeTab === 'settings' ? '2px solid #6366f1' : '2px solid #334155',
                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
-                transition: 'transform 0.15s ease'
+                transition: 'transform 0.15s ease, border-color 0.15s ease',
+                position: 'relative'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'scale(1.08)';

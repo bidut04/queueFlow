@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 import { platformStore } from '../../services/platformState';
+import { MOCK_SUBSCRIPTION_PLANS } from '../../data/mockPlatformData';
 
 export interface Step2Data {
   planName: string;
@@ -16,7 +17,15 @@ export const Step2SubscriptionPlan: React.FC<Step2SubscriptionPlanProps> = ({
   data,
   onChange
 }) => {
-  const plans = platformStore.subscriptionPlans;
+  const rawPlans = (platformStore.subscriptionPlans && platformStore.subscriptionPlans.length > 0)
+    ? platformStore.subscriptionPlans
+    : MOCK_SUBSCRIPTION_PLANS;
+  
+  // Guarantee Free plan is always available
+  const hasFree = rawPlans.some(p => p.name.toLowerCase() === 'free');
+  const plans = hasFree 
+    ? rawPlans 
+    : [MOCK_SUBSCRIPTION_PLANS[0], ...rawPlans];
 
   return (
     <div className="qf-card" style={{ padding: 16 }}>
@@ -72,10 +81,10 @@ export const Step2SubscriptionPlan: React.FC<Step2SubscriptionPlanProps> = ({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
         {plans.map((plan) => {
           const isSelected = data.planName === plan.name;
-          const monthlyPrice = plan.priceMonthly === 0 
-            ? 0 
-            : data.billingCycle === 'annual' 
-              ? Math.round(plan.priceMonthly * 0.8) 
+          const monthlyPrice = plan.priceMonthly === 0
+            ? 0
+            : data.billingCycle === 'annual'
+              ? Math.round(plan.priceMonthly * 0.8)
               : plan.priceMonthly;
 
           return (

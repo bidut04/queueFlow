@@ -6,6 +6,10 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import {
+  usePlatformOrganizations,
+  useActivateOrganization
+} from '../hooks';
 import type { Organization, OrgStatus, PlatformPageId } from '../types/platform';
 import type { TableColumn } from '../../../types/table';
 import { GlobalTable } from '../../../components/table/GlobalTable';
@@ -21,7 +25,11 @@ export const OrganizationsPage: React.FC<OrganizationsPageProps> = ({
   onNavigate,
   onSelectTenantContext
 }) => {
-  const [organizations, setOrganizations] = useState<Organization[]>(platformStore.organizations);
+  const { data: liveOrgs } = usePlatformOrganizations();
+  const activateOrgMutation = useActivateOrganization();
+  const [organizations, setOrganizations] = useState<Organization[]>(
+    liveOrgs || platformStore.organizations
+  );
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -31,6 +39,12 @@ export const OrganizationsPage: React.FC<OrganizationsPageProps> = ({
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [orgToSuspend, setOrgToSuspend] = useState<Organization | null>(null);
+
+  useEffect(() => {
+    if (liveOrgs && liveOrgs.length > 0) {
+      setOrganizations(liveOrgs);
+    }
+  }, [liveOrgs]);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -48,13 +62,19 @@ export const OrganizationsPage: React.FC<OrganizationsPageProps> = ({
     });
   }, [organizations, statusFilter, planFilter, shardFilter]);
 
-  const handleActivate = (orgId: string) => {
+  const handleActivate = async (orgId: string) => {
     if (window.confirm('Are you sure you want to reactivate this organization?')) {
+      try {
+        await activateOrgMutation.mutateAsync({ id: orgId });
+      } catch {
+        // Fallback store
+      }
       platformStore.activateOrganization(orgId);
     }
   };
 
   const getStatusBadgeClass = (status: OrgStatus) => {
+
     switch (status) {
       case 'ACTIVE':
         return { bg: '#d1fae5', color: '#047857', border: '#a7f3d0' };

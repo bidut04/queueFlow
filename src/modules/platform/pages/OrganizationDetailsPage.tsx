@@ -7,11 +7,17 @@ import {
   ArrowLeftRight
 } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import {
+  usePlatformOrganization,
+  usePlatformTenantAdmins,
+  useActivateOrganization,
+} from '../hooks';
 import type { Organization, TenantAdmin, PlatformPageId } from '../types/platform';
 import { GlobalTable } from '../../../components/table/GlobalTable';
 import { SuspendOrganizationModal } from '../components/SuspendOrganizationModal';
 import { TenantAdminModal } from '../components/TenantAdminModal';
 import { MigrationModal } from '../components/MigrationModal';
+import { toast } from '../../../components/ui/Toast';
 
 interface OrganizationDetailsPageProps {
   organizationId: string;
@@ -24,11 +30,15 @@ export const OrganizationDetailsPage: React.FC<OrganizationDetailsPageProps> = (
   onNavigate,
   onSelectTenantContext
 }) => {
+  const { data: liveOrg } = usePlatformOrganization(organizationId);
+  const { data: liveAdmins } = usePlatformTenantAdmins(organizationId);
+  const activateMutation = useActivateOrganization();
+
   const [org, setOrg] = useState<Organization | undefined>(
-    platformStore.organizations.find((o) => o.id === organizationId)
+    liveOrg || platformStore.organizations.find((o) => o.id === organizationId)
   );
   const [tenantAdmins, setTenantAdmins] = useState<TenantAdmin[]>(
-    platformStore.tenantAdmins.filter((a) => a.organizationId === organizationId)
+    liveAdmins || platformStore.tenantAdmins.filter((a) => a.organizationId === organizationId)
   );
 
   const [activeTab, setActiveTab] = useState<
@@ -39,6 +49,18 @@ export const OrganizationDetailsPage: React.FC<OrganizationDetailsPageProps> = (
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (liveOrg) {
+      setOrg(liveOrg);
+    }
+  }, [liveOrg]);
+
+  useEffect(() => {
+    if (liveAdmins && liveAdmins.length > 0) {
+      setTenantAdmins(liveAdmins);
+    }
+  }, [liveAdmins]);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -57,11 +79,18 @@ export const OrganizationDetailsPage: React.FC<OrganizationDetailsPageProps> = (
     );
   }
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     if (window.confirm(`Are you sure you want to reactivate ${org.name}?`)) {
+      try {
+        await activateMutation.mutateAsync({ id: org.id });
+        toast.success(`Organization "${org.name}" reactivated successfully!`);
+      } catch (err: any) {
+        toast.fromApiError(err, 'Failed to reactivate organization');
+      }
       platformStore.activateOrganization(org.id);
     }
   };
+
 
   const currentShardInfo = platformStore.shards.find((s) => s.id === org.currentShard);
 

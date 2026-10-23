@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Lock,
   Plus,
@@ -25,10 +25,94 @@ import type { FormConfig, FormField, FieldType } from '../types/formBuilder';
 import { formStore } from '../utils/formEngine';
 import { FieldSettingsPanel } from '../components/forms/FieldSettingsPanel';
 import { Button } from '../components/ui/Button';
+import { useSaveFormConfig, usePublishFormConfig } from '../api';
+
+const resolveLoginConfig = (branch: string): FormConfig => {
+  const loadedConfigs = formStore.getConfigs();
+  const matching = loadedConfigs.find(
+    (c) => c.branchId === branch && c.formType === 'LOGIN'
+  );
+
+  if (matching) {
+    return matching;
+  }
+  const defaultLoginForm: FormConfig = {
+    id: `form_login_${branch}_v1`,
+    tenantId: 'tenant_queflow_bank',
+    branchId: branch,
+    name: `Branch Login Form (${branch.replace('branch_', '').toUpperCase()})`,
+    description: 'Configured login authentication form layout for staff & admins',
+    formType: 'LOGIN',
+    version: 1,
+    status: 'PUBLISHED',
+    fields: [
+      {
+        id: 'f_login_role',
+        key: 'login_role',
+        label: 'Select Login Role',
+        type: 'RADIO',
+        required: true,
+        enabled: true,
+        order: 1,
+        options: [
+          { value: 'admin', label: 'Admin', enabled: true, order: 1 },
+          { value: 'staff', label: 'Staff', enabled: true, order: 2 },
+          { value: 'manager', label: 'Manager', enabled: true, order: 3 },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'f_login_email',
+        key: 'email',
+        label: 'Email or Username',
+        type: 'EMAIL',
+        placeholder: 'admin@queflow.com',
+        required: true,
+        enabled: true,
+        order: 2,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'f_login_pass',
+        key: 'password',
+        label: 'Password',
+        type: 'TEXT',
+        placeholder: '••••••••••••',
+        required: true,
+        enabled: true,
+        order: 3,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'f_remember_me',
+        key: 'remember_me',
+        label: 'Remember me',
+        type: 'CHECKBOX',
+        required: false,
+        enabled: true,
+        order: 4,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  formStore.saveFormConfig(defaultLoginForm);
+  return defaultLoginForm;
+};
 
 export const LoginFormPage: React.FC = () => {
+  const saveFormMutation = useSaveFormConfig();
+  const publishFormMutation = usePublishFormConfig();
+
   const [selectedBranch, setSelectedBranch] = useState<string>('branch_kolkata');
-  const [activeConfig, setActiveConfig] = useState<FormConfig | null>(null);
+  const [activeConfig, setActiveConfig] = useState<FormConfig>(() =>
+    resolveLoginConfig('branch_kolkata')
+  );
   const [editingField, setEditingField] = useState<FormField | null>(null);
   const [newFieldType, setNewFieldType] = useState<FieldType>('TEXT');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -43,103 +127,43 @@ export const LoginFormPage: React.FC = () => {
 
   const formUrl = `${window.location.origin}/login/${selectedBranch}`;
 
-  useEffect(() => {
-    const loadedConfigs = formStore.getConfigs();
-    const matching = loadedConfigs.find(
-      (c) => c.branchId === selectedBranch && c.formType === 'LOGIN'
-    );
-
-    if (matching) {
-      setActiveConfig(matching);
-    } else {
-      const defaultLoginForm: FormConfig = {
-        id: `form_login_${selectedBranch}_v1`,
-        tenantId: 'tenant_queflow_bank',
-        branchId: selectedBranch,
-        name: `Branch Login Form (${selectedBranch.replace('branch_', '').toUpperCase()})`,
-        description: 'Configured login authentication form layout for staff & admins',
-        formType: 'LOGIN',
-        version: 1,
-        status: 'PUBLISHED',
-        fields: [
-          {
-            id: 'f_login_role',
-            key: 'login_role',
-            label: 'Select Login Role',
-            type: 'RADIO',
-            required: true,
-            enabled: true,
-            order: 1,
-            options: [
-              { value: 'admin', label: 'Admin', enabled: true, order: 1 },
-              { value: 'staff', label: 'Staff', enabled: true, order: 2 },
-              { value: 'manager', label: 'Manager', enabled: true, order: 3 }
-            ],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'f_login_email',
-            key: 'email',
-            label: 'Email or Username',
-            type: 'EMAIL',
-            placeholder: 'admin@queflow.com',
-            required: true,
-            enabled: true,
-            order: 2,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'f_login_pass',
-            key: 'password',
-            label: 'Password',
-            type: 'TEXT',
-            placeholder: '••••••••••••',
-            required: true,
-            enabled: true,
-            order: 3,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'f_remember_me',
-            key: 'remember_me',
-            label: 'Remember me',
-            type: 'CHECKBOX',
-            required: false,
-            enabled: true,
-            order: 4,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      formStore.saveFormConfig(defaultLoginForm);
-      setActiveConfig(defaultLoginForm);
-    }
-  }, [selectedBranch]);
+  const handleBranchSelect = (branch: string) => {
+    setSelectedBranch(branch);
+    setActiveConfig(resolveLoginConfig(branch));
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!activeConfig) return;
-    const saved = formStore.saveFormConfig(activeConfig);
-    setActiveConfig(saved);
-    showToast('Login form structure saved successfully!');
+    try {
+      const saved = await saveFormMutation.mutateAsync(activeConfig);
+      setActiveConfig(saved);
+      showToast('Login form structure saved successfully!');
+    } catch {
+      const saved = formStore.saveFormConfig(activeConfig);
+      setActiveConfig(saved);
+      showToast('Login form structure saved locally!');
+    }
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!activeConfig) return;
-    const published = formStore.publishFormConfig(activeConfig.id);
-    if (published) {
-      setActiveConfig(published);
+    try {
+      const published = await publishFormMutation.mutateAsync(activeConfig.id);
+      if (published) {
+        setActiveConfig(published);
+      }
       showToast('Login form published & activated for live logins!');
+    } catch {
+      const published = formStore.publishFormConfig(activeConfig.id);
+      if (published) {
+        setActiveConfig(published);
+      }
+      showToast('Login form published & active!');
     }
   };
 
@@ -262,7 +286,7 @@ export const LoginFormPage: React.FC = () => {
             <GitBranch size={14} color="#2563eb" />
             <select
               value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
+              onChange={(e) => handleBranchSelect(e.target.value)}
               style={{ border: 'none', outline: 'none', backgroundColor: 'transparent', fontSize: 12, fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}
             >
               <option value="branch_kolkata">Kolkata Branch</option>

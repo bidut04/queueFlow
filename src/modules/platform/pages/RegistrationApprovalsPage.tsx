@@ -17,6 +17,12 @@ import {
   ApprovalActionModal,
   type ApprovalActionType
 } from '../components/approvals/ApprovalActionModal';
+import {
+  usePlatformOrganizations,
+  useApproveRegistration,
+  useRejectRegistration,
+  usePendingRegistrations
+} from '../hooks';
 
 interface RegistrationApprovalsPageProps {
   onNavigate: (tab: PlatformPageId, orgId?: string) => void;
@@ -27,13 +33,26 @@ export const RegistrationApprovalsPage: React.FC<RegistrationApprovalsPageProps>
   onNavigate,
   onSelectTenantContext
 }) => {
-  const [organizations, setOrganizations] = useState<Organization[]>(platformStore.organizations);
+  const { data: liveOrgs } = usePlatformOrganizations();
+  const { refetch: refetchPending } = usePendingRegistrations();
+  const approveMutation = useApproveRegistration();
+  const rejectMutation = useRejectRegistration();
+
+  const [organizations, setOrganizations] = useState<Organization[]>(
+    liveOrgs || platformStore.organizations
+  );
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalActionType, setModalActionType] = useState<ApprovalActionType>('APPROVE');
   const [targetOrg, setTargetOrg] = useState<Organization | null>(null);
+
+  useEffect(() => {
+    if (liveOrgs && liveOrgs.length > 0) {
+      setOrganizations(liveOrgs);
+    }
+  }, [liveOrgs]);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -47,17 +66,31 @@ export const RegistrationApprovalsPage: React.FC<RegistrationApprovalsPageProps>
     setIsModalOpen(true);
   };
 
-  const handleModalConfirm = (orgId: string, remarks: string) => {
+  const handleModalConfirm = async (orgId: string, remarks: string) => {
     if (modalActionType === 'APPROVE') {
+      try {
+        await approveMutation.mutateAsync({ id: orgId, notes: remarks });
+      } catch {
+        // Fallback store
+      }
       platformStore.approveRegistration(orgId, remarks);
+      refetchPending();
     } else if (modalActionType === 'HOLD') {
       platformStore.holdRegistration(orgId, remarks);
+      refetchPending();
     } else if (modalActionType === 'REJECT') {
+      try {
+        await rejectMutation.mutateAsync({ id: orgId, reason: remarks });
+      } catch {
+        // Fallback store
+      }
       platformStore.rejectRegistration(orgId, remarks);
+      refetchPending();
     } else if (modalActionType === 'REMARKS') {
       platformStore.updateOrganizationRemarks(orgId, remarks);
     }
   };
+
 
   const pendingCount = organizations.filter((o) => o.status === 'PENDING').length;
   const holdCount = organizations.filter((o) => o.status === 'HOLD').length;

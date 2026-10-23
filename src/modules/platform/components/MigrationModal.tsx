@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, ArrowLeftRight } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { useStartMigration } from '../hooks';
 import type { Organization, ShardInfo } from '../types/platform';
 
 interface MigrationModalProps {
@@ -20,6 +21,7 @@ export const MigrationModal: React.FC<MigrationModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  const startMigrationMutation = useStartMigration();
   const [orgId, setOrgId] = useState(defaultOrgId || organizations[0]?.id || '');
   const [destinationShard, setDestinationShard] = useState(shards[0]?.id || '');
   const [notes, setNotes] = useState('');
@@ -28,7 +30,7 @@ export const MigrationModal: React.FC<MigrationModalProps> = ({
 
   const targetOrg = organizations.find((o) => o.id === orgId);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orgId || !destinationShard) {
       alert('Please select organization and destination shard.');
@@ -40,10 +42,22 @@ export const MigrationModal: React.FC<MigrationModalProps> = ({
       return;
     }
 
-    platformStore.startMigration(orgId, destinationShard, notes);
+    try {
+      await startMigrationMutation.mutateAsync({
+        tenantId: orgId,
+        targetShardId: destinationShard,
+        notes
+      });
+    } catch {
+      // Fallback
+    }
+
+    await platformStore.startMigration(orgId, destinationShard, notes);
     onSuccess();
     onClose();
   };
+
+
 
   return (
     <div

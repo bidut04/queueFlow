@@ -1,6 +1,5 @@
 import { api } from './client';
 import type { UserItem, UserRole, AccountStatus } from '../types/user';
-import { USERS_LIST } from '../data/mockData';
 
 export interface CreateUserInput {
   name: string;
@@ -18,13 +17,13 @@ export interface UpdateUserInput extends Partial<CreateUserInput> {
   id: string;
 }
 
-let localUsers: UserItem[] = [...USERS_LIST];
+let localUsers: UserItem[] = [];
 
 export const userApi = {
   getUsers: async (): Promise<UserItem[]> => {
     try {
       const result = await api.get<UserItem[]>('/users');
-      if (Array.isArray(result) && result.length > 0) {
+      if (Array.isArray(result)) {
         return result;
       }
       return localUsers;

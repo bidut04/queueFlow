@@ -18,10 +18,18 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import type { TableColumn } from '../types/table';
 import type { Branch } from '../types/branch';
-import { BRANCHES_LIST } from '../data/mockData';
+import {
+  useBranches,
+  useCreateBranch,
+  useUpdateBranch,
+  useDeleteBranch,
+} from '../api';
 
 export const BranchesPage: React.FC = () => {
-  const [branches, setBranches] = useState<Branch[]>(BRANCHES_LIST);
+  const { data: branches = [] } = useBranches();
+  const createBranchMutation = useCreateBranch();
+  const updateBranchMutation = useUpdateBranch();
+  const deleteBranchMutation = useDeleteBranch();
 
   // Inline Form Toggle Visibility States
   const [showBranchForm, setShowBranchForm] = useState(false);
@@ -81,36 +89,40 @@ export const BranchesPage: React.FC = () => {
     setShowBranchForm(true);
   };
 
-  const handleSaveBranch = (e: React.FormEvent) => {
+  const handleSaveBranch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!branchForm.name.trim()) return;
 
     if (editingBranch) {
-      setBranches((prev) =>
-        prev.map((b) =>
-          b.id === editingBranch.id
-            ? { ...b, ...branchForm }
-            : b
-        )
-      );
-      showToast(`Branch "${branchForm.name}" updated successfully!`);
+      try {
+        await updateBranchMutation.mutateAsync({
+          id: editingBranch.id,
+          ...branchForm,
+        });
+        showToast(`Branch "${branchForm.name}" updated successfully!`);
+      } catch {
+        showToast(`Failed to update branch.`);
+      }
     } else {
-      const newBranch: Branch = {
-        id: `br-${Date.now()}`,
-        ...branchForm,
-        todayTotalBookings: 0
-      };
-      setBranches((prev) => [newBranch, ...prev]);
-      showToast(`New Branch "${branchForm.name}" created successfully!`);
+      try {
+        await createBranchMutation.mutateAsync(branchForm);
+        showToast(`New Branch "${branchForm.name}" created successfully!`);
+      } catch {
+        showToast(`Failed to create branch.`);
+      }
     }
     setShowBranchForm(false);
     setEditingBranch(null);
   };
 
-  const handleDeleteBranch = (id: string, name: string) => {
+  const handleDeleteBranch = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to remove ${name}?`)) {
-      setBranches((prev) => prev.filter((b) => b.id !== id));
-      showToast(`Branch "${name}" deleted.`);
+      try {
+        await deleteBranchMutation.mutateAsync(id);
+        showToast(`Branch "${name}" deleted.`);
+      } catch {
+        showToast(`Failed to delete branch.`);
+      }
     }
   };
 

@@ -19,13 +19,12 @@ import { CreateOrganizationWizardPage } from './wizard/CreateOrganizationWizardP
 import { RegistrationApprovalsPage } from '../pages/RegistrationApprovalsPage';
 
 interface PlatformLayoutProps {
-  onExitPlatform: () => void;
-  onEnterTenantApp: (org: Organization) => void;
+  onExitPlatform?: () => void;
+  onEnterTenantApp?: (org: Organization) => void;
 }
 
 export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
   onExitPlatform,
-  onEnterTenantApp
 }) => {
   const getTabFromUrl = (): { tab: PlatformPageId; orgId?: string } => {
     const pathname = window.location.pathname.replace(/^\/platform\/?/, '');
@@ -68,6 +67,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
   const [activeTenantContext, setActiveTenantContext] = useState<Organization | null>(platformStore.activeTenantContext);
 
   useEffect(() => {
+    platformStore.loadFromBackend();
     return platformStore.subscribe(() => {
       setActiveTenantContext(platformStore.activeTenantContext);
     });
@@ -106,10 +106,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
 
   const handleSelectTenantContext = (orgId: string) => {
     platformStore.switchTenantContext(orgId);
-    const org = platformStore.organizations.find((o) => o.id === orgId);
-    if (org) {
-      onEnterTenantApp(org);
-    }
+    handleNavigate('org-details', orgId);
   };
 
   const handleExitTenantContext = () => {

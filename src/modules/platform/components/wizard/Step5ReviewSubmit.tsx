@@ -82,6 +82,7 @@ export const Step5ReviewSubmit: React.FC<Step5ReviewSubmitProps> = ({
             <div><strong>Admin Name:</strong> {step4.primaryAdminName}</div>
             <div><strong>Admin Email:</strong> {step4.primaryAdminEmail}</div>
             <div><strong>Role:</strong> {step4.adminRole}</div>
+            <div><strong>Password Setup:</strong> <span style={{ color: '#2563eb', fontWeight: 700 }}>Auto-Dispatched Setup Link</span></div>
             <div><strong>Enforce MFA:</strong> {step4.enforceMfa ? 'YES' : 'NO'}</div>
           </div>
         </div>

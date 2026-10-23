@@ -15,10 +15,20 @@ import { GlobalTable } from '../components/table/GlobalTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import type { TableColumn } from '../types/table';
-import { INITIAL_DEPARTMENTS, type DepartmentItem } from '../data/mockDepartments';
+import type { DepartmentItem } from '../data/mockDepartments';
+import {
+  useDepartments,
+  useCreateDepartment,
+  useUpdateDepartment,
+  useDeleteDepartment,
+} from '../api';
 
 export const DepartmentsPage: React.FC = () => {
-  const [departments, setDepartments] = useState<DepartmentItem[]>(INITIAL_DEPARTMENTS);
+  const { data: departments = [] } = useDepartments();
+  const createDeptMutation = useCreateDepartment();
+  const updateDeptMutation = useUpdateDepartment();
+  const deleteDeptMutation = useDeleteDepartment();
+
   const [showDeptForm, setShowDeptForm] = useState(false);
   const [editingDept, setEditingDept] = useState<DepartmentItem | null>(null);
 
@@ -70,13 +80,16 @@ export const DepartmentsPage: React.FC = () => {
     setShowDeptForm(true);
   };
 
-  const handleDeleteDept = (id: string) => {
-    const updated = departments.filter((d) => d.id !== id);
-    setDepartments(updated);
-    showToast('Department removed successfully!');
+  const handleDeleteDept = async (id: string) => {
+    try {
+      await deleteDeptMutation.mutateAsync(id);
+      showToast('Department removed successfully!');
+    } catch {
+      showToast('Failed to remove department.');
+    }
   };
 
-  const handleSubmitDeptForm = (e: React.FormEvent) => {
+  const handleSubmitDeptForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!deptForm.deptName.trim()) {
       showToast('Department Name is required!');
@@ -84,36 +97,36 @@ export const DepartmentsPage: React.FC = () => {
     }
 
     if (editingDept) {
-      const updated = departments.map((d) =>
-        d.id === editingDept.id
-          ? {
-              ...d,
-              deptCode: deptForm.deptCode,
-              deptName: deptForm.deptName,
-              headOfDept: deptForm.headOfDept,
-              branch: deptForm.branch,
-              totalStaff: Number(deptForm.totalStaff),
-              activeCounters: Number(deptForm.activeCounters),
-              status: deptForm.status
-            }
-          : d
-      );
-      setDepartments(updated);
-      showToast(`Department "${deptForm.deptName}" updated successfully!`);
+      try {
+        await updateDeptMutation.mutateAsync({
+          id: editingDept.id,
+          deptCode: deptForm.deptCode,
+          deptName: deptForm.deptName,
+          headOfDept: deptForm.headOfDept,
+          branch: deptForm.branch,
+          totalStaff: Number(deptForm.totalStaff),
+          activeCounters: Number(deptForm.activeCounters),
+          status: deptForm.status,
+        });
+        showToast(`Department "${deptForm.deptName}" updated successfully!`);
+      } catch {
+        showToast(`Failed to update department.`);
+      }
     } else {
-      const newDept: DepartmentItem = {
-        id: `dept_${Date.now()}`,
-        deptCode: deptForm.deptCode,
-        deptName: deptForm.deptName,
-        headOfDept: deptForm.headOfDept || 'Unassigned',
-        branch: deptForm.branch,
-        totalStaff: Number(deptForm.totalStaff),
-        activeCounters: Number(deptForm.activeCounters),
-        status: deptForm.status,
-        createdDate: new Date().toISOString().split('T')[0]
-      };
-      setDepartments([newDept, ...departments]);
-      showToast(`New department "${deptForm.deptName}" created!`);
+      try {
+        await createDeptMutation.mutateAsync({
+          deptCode: deptForm.deptCode,
+          deptName: deptForm.deptName,
+          headOfDept: deptForm.headOfDept || 'Unassigned',
+          branch: deptForm.branch,
+          totalStaff: Number(deptForm.totalStaff),
+          activeCounters: Number(deptForm.activeCounters),
+          status: deptForm.status,
+        });
+        showToast(`New department "${deptForm.deptName}" created!`);
+      } catch {
+        showToast(`Failed to create department.`);
+      }
     }
 
     setShowDeptForm(false);

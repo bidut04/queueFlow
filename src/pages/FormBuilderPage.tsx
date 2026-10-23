@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   FolderTree,
   Plus,
@@ -23,101 +23,150 @@ import { FieldPalette } from '../components/forms/FieldPalette';
 import { FieldSettingsPanel } from '../components/forms/FieldSettingsPanel';
 import { DynamicFormRenderer } from '../components/forms/DynamicFormRenderer';
 import { Button } from '../components/ui/Button';
+import {
+  useSaveFormConfig,
+  usePublishFormConfig,
+  useCreateFormVersion,
+} from '../api';
+
+const resolveFormConfig = (
+  branch: string,
+  formType: FormType,
+  service: string
+): { config: FormConfig; defaultFieldId: string | null } => {
+  const loadedConfigs = formStore.getConfigs();
+  const matching = loadedConfigs.find(
+    (c) =>
+      c.branchId === branch &&
+      c.formType === formType &&
+      (formType === 'BOOKING' ? c.serviceId === service : true)
+  );
+
+  if (matching) {
+    if (formType === 'BOOKING' || formType === 'APPOINTMENT') {
+      const allowedKeys = ['full_name', 'phone', 'service', 'gender'];
+      const filtered = matching.fields.filter((f) => allowedKeys.includes(f.key));
+      return { config: { ...matching, fields: filtered }, defaultFieldId: filtered[0]?.id || null };
+    }
+    return { config: matching, defaultFieldId: matching.fields[0]?.id || null };
+  }
+
+  const newForm: FormConfig = {
+    id: `form_${formType.toLowerCase()}_${branch}_v1`,
+    tenantId: 'tenant_queflow_bank',
+    branchId: branch,
+    serviceId: formType === 'BOOKING' ? service : undefined,
+    name: `${branch.replace('branch_', '').toUpperCase()} ${formType} Form`,
+    description: `Custom ${formType.toLowerCase()} form configuration for branch`,
+    formType,
+    version: 1,
+    status: 'DRAFT',
+    fields: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  formStore.saveFormConfig(newForm);
+  return { config: newForm, defaultFieldId: null };
+};
 
 export const FormBuilderPage: React.FC = () => {
+  const saveFormMutation = useSaveFormConfig();
+  const publishFormMutation = usePublishFormConfig();
+  const createVersionMutation = useCreateFormVersion();
+
   const [selectedBranch, setSelectedBranch] = useState<string>('branch_kolkata');
   const [selectedFormType, setSelectedFormType] = useState<FormType>('BOOKING');
   const [selectedService, setSelectedService] = useState<string>('service_kyc');
-  const [activeConfig, setActiveConfig] = useState<FormConfig | null>(null);
-  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+
+  const initialResolved = resolveFormConfig('branch_kolkata', 'BOOKING', 'service_kyc');
+  const [activeConfig, setActiveConfig] = useState<FormConfig | null>(initialResolved.config);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(initialResolved.defaultFieldId);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Login config state
-  const [loginConfig, setLoginConfig] = useState<LoginConfig>({
-    tenantId: 'tenant_queflow_bank',
-    branchId: 'branch_kolkata',
-    supportedIdentifiers: ['PHONE', 'EMAIL', 'CUSTOMER_ID'],
-    allowPasswordAuth: true,
-    allowOtpAuth: true,
-    requireCaptcha: false
+  const [loginConfig, setLoginConfig] = useState<LoginConfig>(() => {
+    const logins = formStore.getLoginConfigs();
+    const lMatch = logins.find((l) => l.branchId === 'branch_kolkata');
+    return (
+      lMatch || {
+        tenantId: 'tenant_queflow_bank',
+        branchId: 'branch_kolkata',
+        supportedIdentifiers: ['PHONE', 'EMAIL', 'CUSTOMER_ID'],
+        allowPasswordAuth: true,
+        allowOtpAuth: true,
+        requireCaptcha: false,
+      }
+    );
   });
 
-  useEffect(() => {
-    const loadedConfigs = formStore.getConfigs();
+  const handleBranchSelect = (newBranch: string) => {
+    setSelectedBranch(newBranch);
+    const resolved = resolveFormConfig(newBranch, selectedFormType, selectedService);
+    setActiveConfig(resolved.config);
+    setSelectedFieldId(resolved.defaultFieldId);
+  };
 
-    const matching = loadedConfigs.find(
-      (c) =>
-        c.branchId === selectedBranch &&
-        c.formType === selectedFormType &&
-        (selectedFormType === 'BOOKING' ? c.serviceId === selectedService : true)
-    );
+  const handleFormTypeSelect = (newType: FormType) => {
+    setSelectedFormType(newType);
+    const resolved = resolveFormConfig(selectedBranch, newType, selectedService);
+    setActiveConfig(resolved.config);
+    setSelectedFieldId(resolved.defaultFieldId);
+  };
 
-    if (matching) {
-      if (selectedFormType === 'BOOKING' || selectedFormType === 'APPOINTMENT') {
-        const allowedKeys = ['full_name', 'phone', 'service', 'gender'];
-        const filtered = matching.fields.filter((f) => allowedKeys.includes(f.key));
-        const updatedConfig = { ...matching, fields: filtered };
-        setActiveConfig(updatedConfig);
-        if (filtered.length > 0) setSelectedFieldId(filtered[0].id);
-      } else {
-        setActiveConfig(matching);
-        if (matching.fields.length > 0) {
-          setSelectedFieldId(matching.fields[0].id);
-        }
-      }
-    } else {
-      // Create new draft template if none exists
-      const newForm: FormConfig = {
-        id: `form_${selectedFormType.toLowerCase()}_${selectedBranch}_v1`,
-        tenantId: 'tenant_queflow_bank',
-        branchId: selectedBranch,
-        serviceId: selectedFormType === 'BOOKING' ? selectedService : undefined,
-        name: `${selectedBranch.replace('branch_', '').toUpperCase()} ${selectedFormType} Form`,
-        description: `Custom ${selectedFormType.toLowerCase()} form configuration for branch`,
-        formType: selectedFormType,
-        version: 1,
-        status: 'DRAFT',
-        fields: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      formStore.saveFormConfig(newForm);
-      setActiveConfig(newForm);
-    }
-
-    // Load login config
-    const logins = formStore.getLoginConfigs();
-    const lMatch = logins.find((l) => l.branchId === selectedBranch);
-    if (lMatch) setLoginConfig(lMatch);
-  }, [selectedBranch, selectedFormType, selectedService]);
+  const handleServiceSelect = (newService: string) => {
+    setSelectedService(newService);
+    const resolved = resolveFormConfig(selectedBranch, selectedFormType, newService);
+    setActiveConfig(resolved.config);
+    setSelectedFieldId(resolved.defaultFieldId);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!activeConfig) return;
-    const saved = formStore.saveFormConfig(activeConfig);
-    setActiveConfig(saved);
-    showToast('Draft configuration saved successfully!');
-  };
-
-  const handlePublish = () => {
-    if (!activeConfig) return;
-    const published = formStore.publishFormConfig(activeConfig.id);
-    if (published) {
-      setActiveConfig(published);
-      showToast('Form Published! Now active for live customer bookings.');
+    try {
+      const saved = await saveFormMutation.mutateAsync(activeConfig);
+      setActiveConfig(saved);
+      showToast('Draft configuration saved successfully!');
+    } catch {
+      const saved = formStore.saveFormConfig(activeConfig);
+      setActiveConfig(saved);
+      showToast('Draft configuration saved locally!');
     }
   };
 
-  const handleCreateNewVersion = () => {
+  const handlePublish = async () => {
     if (!activeConfig) return;
-    const newVersion = formStore.createNewVersion(activeConfig);
-    setActiveConfig(newVersion);
-    showToast(`Created new Draft Version V${newVersion.version}`);
+    try {
+      const published = await publishFormMutation.mutateAsync(activeConfig.id);
+      if (published) {
+        setActiveConfig(published);
+      }
+      showToast('Form Published! Now active for live customer bookings.');
+    } catch {
+      const published = formStore.publishFormConfig(activeConfig.id);
+      if (published) {
+        setActiveConfig(published);
+      }
+      showToast('Form Published & active!');
+    }
+  };
+
+  const handleCreateNewVersion = async () => {
+    if (!activeConfig) return;
+    try {
+      const newVersion = await createVersionMutation.mutateAsync(activeConfig);
+      setActiveConfig(newVersion);
+      showToast(`Created new Draft Version V${newVersion.version}`);
+    } catch {
+      const newVersion = formStore.createNewVersion(activeConfig);
+      setActiveConfig(newVersion);
+      showToast(`Created new Draft Version V${newVersion.version}`);
+    }
   };
 
   const handleAddField = (type: FieldType) => {
@@ -126,7 +175,7 @@ export const FormBuilderPage: React.FC = () => {
     const count = activeConfig.fields.length + 1;
     const newKey = `field_${type.toLowerCase()}_${count}`;
     const newField: FormField = {
-      id: `f_${Date.now()}`,
+      id: `f_${Math.random().toString(36).substring(2, 9)}`,
       key: newKey,
       label: `New ${type.replace('_', ' ')} Field`,
       type,
@@ -169,7 +218,7 @@ export const FormBuilderPage: React.FC = () => {
     if (!activeConfig) return;
     const newField: FormField = {
       ...field,
-      id: `f_${Date.now()}`,
+      id: `f_${Math.random().toString(36).substring(2, 9)}`,
       key: `${field.key}_copy`,
       label: `${field.label} (Copy)`,
       order: activeConfig.fields.length + 1,
@@ -259,7 +308,7 @@ export const FormBuilderPage: React.FC = () => {
             <GitBranch size={13} color="#2563eb" />
             <select
               value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
+              onChange={(e) => handleBranchSelect(e.target.value)}
               style={{ border: 'none', outline: 'none', backgroundColor: 'transparent', fontSize: 11.5, fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}
             >
               <option value="branch_kolkata">Kolkata Branch</option>
@@ -274,7 +323,7 @@ export const FormBuilderPage: React.FC = () => {
             <Layers size={13} color="#2563eb" />
             <select
               value={selectedFormType}
-              onChange={(e) => setSelectedFormType(e.target.value as FormType)}
+              onChange={(e) => handleFormTypeSelect(e.target.value as FormType)}
               style={{ border: 'none', outline: 'none', backgroundColor: 'transparent', fontSize: 11.5, fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}
             >
               <option value="BOOKING">Booking Form</option>
@@ -291,7 +340,7 @@ export const FormBuilderPage: React.FC = () => {
               <Briefcase size={13} color="#2563eb" />
               <select
                 value={selectedService}
-                onChange={(e) => setSelectedService(e.target.value)}
+                onChange={(e) => handleServiceSelect(e.target.value)}
                 style={{ border: 'none', outline: 'none', backgroundColor: 'transparent', fontSize: 11.5, fontWeight: 700, color: '#0f172a', cursor: 'pointer' }}
               >
                 <option value="service_kyc">KYC Verification Service</option>

@@ -4,7 +4,8 @@ import {
   Bell,
   Building2,
   ChevronDown,
-  LogOut
+  LogOut,
+  RefreshCw
 } from 'lucide-react';
 import { platformStore } from '../services/platformState';
 import type { Organization } from '../types/platform';
@@ -12,16 +13,16 @@ import { authApi } from '../../../api/auth.api';
 
 interface PlatformHeaderProps {
   onSelectTenantContext: (orgId: string) => void;
-  onExitPlatform: () => void;
+  onExitPlatform?: () => void;
 }
 
 export const PlatformHeader: React.FC<PlatformHeaderProps> = ({
   onSelectTenantContext,
-  onExitPlatform
 }) => {
   const [organizations, setOrganizations] = useState<Organization[]>(platformStore.organizations);
   const [currentUser, setCurrentUser] = useState(platformStore.currentUser);
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -198,6 +199,34 @@ export const PlatformHeader: React.FC<PlatformHeaderProps> = ({
 
       {/* Right Header Status & User */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Sync with Live DB button */}
+        <button
+          onClick={async () => {
+            setIsRefreshing(true);
+            await platformStore.loadFromBackend();
+            setIsRefreshing(false);
+          }}
+          disabled={isRefreshing}
+          style={{
+            backgroundColor: '#f8fafc',
+            border: '1px solid #cbd5e1',
+            borderRadius: 5,
+            padding: '3px 8px',
+            fontSize: 10.5,
+            fontWeight: 600,
+            color: '#475569',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            cursor: isRefreshing ? 'wait' : 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+          title="Sync with Live Database"
+        >
+          <RefreshCw size={11} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }} />
+          <span>{isRefreshing ? 'Syncing...' : 'Sync'}</span>
+        </button>
+
         {/* System Status Pill */}
         <div
           style={{
@@ -287,55 +316,25 @@ export const PlatformHeader: React.FC<PlatformHeaderProps> = ({
           </div>
         </div>
 
-        {/* Exit Super Admin to Tenant App Button */}
-        <button
-          onClick={onExitPlatform}
-          title="Exit Super Admin and view Tenant Application"
-          style={{
-            backgroundColor: '#ffffff',
-            color: '#475569',
-            border: '1px solid #cbd5e1',
-            borderRadius: 5,
-            padding: '3px 8px',
-            fontSize: 10.5,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            transition: 'all 0.15s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.color = '#4f46e5';
-            e.currentTarget.style.borderColor = '#818cf8';
-            e.currentTarget.style.backgroundColor = '#f8fafc';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.color = '#475569';
-            e.currentTarget.style.borderColor = '#cbd5e1';
-            e.currentTarget.style.backgroundColor = '#ffffff';
-          }}
-        >
-          <Building2 size={12} />
-          Tenant App
-        </button>
-
         {/* Super Admin Log Out Button */}
         <button
-          onClick={() => authApi.logout()}
+          onClick={async () => {
+            await authApi.logout();
+            window.location.href = '/login';
+          }}
           title="Sign out of Super Admin"
           style={{
             backgroundColor: '#fef2f2',
             color: '#dc2626',
             border: '1px solid #fee2e2',
             borderRadius: 5,
-            padding: '3px 8px',
-            fontSize: 10.5,
+            padding: '4px 10px',
+            fontSize: 11,
             fontWeight: 700,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
+            gap: 5,
             transition: 'all 0.15s ease',
           }}
           onMouseOver={(e) => {
@@ -347,7 +346,7 @@ export const PlatformHeader: React.FC<PlatformHeaderProps> = ({
             e.currentTarget.style.borderColor = '#fee2e2';
           }}
         >
-          <LogOut size={12} color="#dc2626" />
+          <LogOut size={13} color="#dc2626" />
           Log Out
         </button>
       </div>

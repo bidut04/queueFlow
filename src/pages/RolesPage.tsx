@@ -16,10 +16,20 @@ import { GlobalTable } from '../components/table/GlobalTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import type { TableColumn } from '../types/table';
-import { INITIAL_ROLES, type RoleItem } from '../data/mockRoles';
+import type { RoleItem } from '../data/mockRoles';
+import {
+  useRoles,
+  useCreateRole,
+  useUpdateRole,
+  useDeleteRole,
+} from '../api';
 
 export const RolesPage: React.FC = () => {
-  const [roles, setRoles] = useState<RoleItem[]>(INITIAL_ROLES);
+  const { data: roles = [] } = useRoles();
+  const createRoleMutation = useCreateRole();
+  const updateRoleMutation = useUpdateRole();
+  const deleteRoleMutation = useDeleteRole();
+
   const [showRoleForm, setShowRoleForm] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleItem | null>(null);
 
@@ -68,13 +78,16 @@ export const RolesPage: React.FC = () => {
     setShowRoleForm(true);
   };
 
-  const handleDeleteRole = (id: string) => {
-    const updated = roles.filter((r) => r.id !== id);
-    setRoles(updated);
-    showToast('Role deleted successfully!');
+  const handleDeleteRole = async (id: string) => {
+    try {
+      await deleteRoleMutation.mutateAsync(id);
+      showToast('Role deleted successfully!');
+    } catch {
+      showToast('Failed to delete role.');
+    }
   };
 
-  const handleSubmitRoleForm = (e: React.FormEvent) => {
+  const handleSubmitRoleForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roleForm.roleName.trim()) {
       showToast('Role Name is required!');
@@ -82,35 +95,34 @@ export const RolesPage: React.FC = () => {
     }
 
     if (editingRole) {
-      const updated = roles.map((r) =>
-        r.id === editingRole.id
-          ? {
-              ...r,
-              roleCode: roleForm.roleCode,
-              roleName: roleForm.roleName,
-              description: roleForm.description,
-              permissionsCount: Number(roleForm.permissionsCount),
-              level: roleForm.level,
-              status: roleForm.status
-            }
-          : r
-      );
-      setRoles(updated);
-      showToast(`Role "${roleForm.roleName}" updated successfully!`);
+      try {
+        await updateRoleMutation.mutateAsync({
+          id: editingRole.id,
+          roleCode: roleForm.roleCode,
+          roleName: roleForm.roleName,
+          description: roleForm.description,
+          permissionsCount: Number(roleForm.permissionsCount),
+          level: roleForm.level,
+          status: roleForm.status,
+        });
+        showToast(`Role "${roleForm.roleName}" updated successfully!`);
+      } catch {
+        showToast(`Failed to update role.`);
+      }
     } else {
-      const newRole: RoleItem = {
-        id: `role_${Date.now()}`,
-        roleCode: roleForm.roleCode,
-        roleName: roleForm.roleName,
-        description: roleForm.description,
-        permissionsCount: Number(roleForm.permissionsCount),
-        assignedEmployees: 0,
-        level: roleForm.level,
-        status: roleForm.status,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setRoles([newRole, ...roles]);
-      showToast(`New role "${roleForm.roleName}" created!`);
+      try {
+        await createRoleMutation.mutateAsync({
+          roleCode: roleForm.roleCode,
+          roleName: roleForm.roleName,
+          description: roleForm.description,
+          permissionsCount: Number(roleForm.permissionsCount),
+          level: roleForm.level,
+          status: roleForm.status,
+        });
+        showToast(`New role "${roleForm.roleName}" created!`);
+      } catch {
+        showToast(`Failed to create role.`);
+      }
     }
 
     setShowRoleForm(false);

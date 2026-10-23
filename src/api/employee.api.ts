@@ -1,6 +1,5 @@
 import { api } from './client';
 import type { Employee } from '../types/employee';
-import { INITIAL_EMPLOYEES } from '../data/mockEmployees';
 
 export interface CreateEmployeeInput {
   name: string;
@@ -18,13 +17,13 @@ export interface UpdateEmployeeInput extends Partial<CreateEmployeeInput> {
 }
 
 // In-memory fallback state so CRUD operations persist seamlessly in dev mode
-let localEmployees: Employee[] = [...INITIAL_EMPLOYEES];
+let localEmployees: Employee[] = [];
 
 export const employeeApi = {
   getEmployees: async (): Promise<Employee[]> => {
     try {
       const result = await api.get<Employee[]>('/employees');
-      if (Array.isArray(result) && result.length > 0) {
+      if (Array.isArray(result)) {
         return result;
       }
       return localEmployees;

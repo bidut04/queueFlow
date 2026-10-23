@@ -97,18 +97,23 @@ export const apiClient = async <T = unknown>(
 
     if (!response.ok) {
       if (response.status === 401 && !url.includes('/auth/login')) {
-        try {
-          localStorage.removeItem('queflow_token');
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('token');
-          localStorage.removeItem('queflow_user');
-        } catch {
-          // ignore storage error
-        }
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('login')) {
-          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-          window.history.pushState({ pageId: 'login' }, '', '/login');
-          window.dispatchEvent(new PopStateEvent('popstate'));
+        const currentToken = getAuthToken();
+        const isMockSession = Boolean(currentToken && currentToken.startsWith('mock_token_'));
+
+        if (!isMockSession) {
+          try {
+            localStorage.removeItem('queflow_token');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('token');
+            localStorage.removeItem('queflow_user');
+          } catch {
+            // ignore storage error
+          }
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('login')) {
+            window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+            window.history.pushState({ pageId: 'login' }, '', '/login');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }
         }
       }
 

@@ -1,6 +1,5 @@
 import { api } from './client';
 import type { Booking } from '../types/booking';
-import { RECENT_BOOKINGS_DATA } from '../data/mockData';
 
 export interface CreateBookingInput {
   customerName: string;
@@ -13,14 +12,14 @@ export interface CreateBookingInput {
   notes?: string;
 }
 
-let localBookings: Booking[] = [...RECENT_BOOKINGS_DATA];
+let localBookings: Booking[] = [];
 
 export const bookingApi = {
   getBookings: async (branchId?: string, statusFilter?: string): Promise<Booking[]> => {
     try {
       const endpoint = branchId ? `/bookings/branch/${branchId}` : '/bookings';
       const result = await api.get<Booking[]>(endpoint);
-      if (Array.isArray(result) && result.length > 0) {
+      if (Array.isArray(result)) {
         return statusFilter && statusFilter !== 'All'
           ? result.filter((b) => b.status === statusFilter)
           : result;

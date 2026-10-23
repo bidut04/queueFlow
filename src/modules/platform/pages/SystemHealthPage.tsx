@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Server, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { usePlatformHealth } from '../hooks';
 import type { SystemComponentHealth } from '../types/platform';
 
 export const SystemHealthPage: React.FC = () => {
-  const [components, setComponents] = useState<SystemComponentHealth[]>(platformStore.systemHealth);
+  const { data: liveHealth, refetch } = usePlatformHealth();
+  const [components, setComponents] = useState<SystemComponentHealth[]>(
+
+    liveHealth || platformStore.systemHealth
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (liveHealth && liveHealth.length > 0) {
+      setComponents(liveHealth);
+    }
+  }, [liveHealth]);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -13,12 +24,15 @@ export const SystemHealthPage: React.FC = () => {
     });
   }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 600);
+    await Promise.allSettled([
+      refetch(),
+      platformStore.loadFromBackend()
+    ]);
+    setIsRefreshing(false);
   };
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {

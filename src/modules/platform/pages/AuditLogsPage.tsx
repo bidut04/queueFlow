@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { platformStore } from '../services/platformState';
+import { usePlatformAuditLogs } from '../hooks';
 import type { PlatformAuditLog } from '../types/platform';
 import type { TableColumn } from '../../../types/table';
 import { GlobalTable } from '../../../components/table/GlobalTable';
 
 export const AuditLogsPage: React.FC = () => {
-  const [logs, setLogs] = useState<PlatformAuditLog[]>(platformStore.auditLogs);
+  const { data: liveLogs } = usePlatformAuditLogs();
+  const [storeLogs, setStoreLogs] = useState<PlatformAuditLog[]>(platformStore.auditLogs);
 
   // Filters
   const [actionFilter, setActionFilter] = useState('ALL');
@@ -13,9 +15,12 @@ export const AuditLogsPage: React.FC = () => {
 
   useEffect(() => {
     return platformStore.subscribe(() => {
-      setLogs([...platformStore.auditLogs]);
+      setStoreLogs([...platformStore.auditLogs]);
     });
   }, []);
+
+  const logs = (liveLogs && liveLogs.length > 0) ? liveLogs : storeLogs;
+
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {

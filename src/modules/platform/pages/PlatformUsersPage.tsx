@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { platformStore } from '../services/platformState';
+import { usePlatformUsers, useUpdatePlatformUser } from '../hooks';
 import type { PlatformUser, PlatformPageId } from '../types/platform';
 import type { TableColumn } from '../../../types/table';
 import { GlobalTable } from '../../../components/table/GlobalTable';
@@ -11,8 +12,16 @@ interface PlatformUsersPageProps {
 }
 
 export const PlatformUsersPage: React.FC<PlatformUsersPageProps> = () => {
-  const [users, setUsers] = useState<PlatformUser[]>(platformStore.platformUsers);
+  const { data: liveUsers } = usePlatformUsers();
+  const updateUserMutation = useUpdatePlatformUser();
+  const [users, setUsers] = useState<PlatformUser[]>(liveUsers || platformStore.platformUsers);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (liveUsers && liveUsers.length > 0) {
+      setUsers(liveUsers);
+    }
+  }, [liveUsers]);
 
   useEffect(() => {
     return platformStore.subscribe(() => {
@@ -20,8 +29,8 @@ export const PlatformUsersPage: React.FC<PlatformUsersPageProps> = () => {
     });
   }, []);
 
-  const handleToggleSuspend = (userId: string, currentStatus: string) => {
-    const usr = platformStore.platformUsers.find((u) => u.id === userId);
+  const handleToggleSuspend = async (userId: string, currentStatus: string) => {
+    const usr = users.find((u) => u.id === userId);
     if (!usr) return;
 
     if (usr.role === 'PLATFORM_OWNER') {
@@ -29,9 +38,20 @@ export const PlatformUsersPage: React.FC<PlatformUsersPageProps> = () => {
       return;
     }
 
-    usr.status = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-    setUsers([...platformStore.platformUsers]);
+    const nextStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+    try {
+      await updateUserMutation.mutateAsync({
+        id: userId,
+        input: { status: nextStatus }
+      });
+    } catch {
+      // Fallback
+    }
+
+    usr.status = nextStatus;
+    setUsers([...users]);
   };
+
 
   const columns: TableColumn<PlatformUser>[] = [
     {
