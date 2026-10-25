@@ -10,21 +10,15 @@ describe('PopularServiceCard Component', () => {
     categoryLabel: 'Banking',
     tenantId: 'tenant-sbi',
     tenantName: 'State Bank of India',
-    serviceName: 'Cash Deposit & Withdrawal',
     category: 'banks',
     iconType: 'bank',
     openingHours: '9:30 AM - 4:00 PM',
-    currentWaiting: 6,
     estWaitMinutes: 14,
-    estWaitTimeMin: 14,
-    avgServiceTimeMin: 5,
     isOpen: true,
     activeCounters: 3,
     branchName: 'Main Branch',
     branchId: 'branch-1',
     distanceKm: 0.8,
-    rating: 4.7,
-    price: 'Free',
   };
 
   it('renders service details, wait time, and branch', () => {
