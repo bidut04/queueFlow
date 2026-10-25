@@ -1,4 +1,3 @@
-import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PopularServiceCard } from './PopularServiceCard';
@@ -12,7 +11,9 @@ describe('PopularServiceCard Component', () => {
     tenantId: 'tenant-sbi',
     tenantName: 'State Bank of India',
     serviceName: 'Cash Deposit & Withdrawal',
-    category: 'Banking',
+    category: 'banks',
+    iconType: 'bank',
+    openingHours: '9:30 AM - 4:00 PM',
     currentWaiting: 6,
     estWaitMinutes: 14,
     estWaitTimeMin: 14,

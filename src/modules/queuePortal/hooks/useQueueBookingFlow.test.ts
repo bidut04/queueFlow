@@ -16,15 +16,11 @@ describe('useQueueBookingFlow State Machine Hook', () => {
   const mockTenant: TenantItem = {
     id: 'tenant-apollo',
     name: 'Apollo Clinic',
-    category: 'Healthcare',
-    rating: 4.8,
-    reviewCount: 320,
-    isOpen: true,
-    logoUrl: 'https://images.unsplash.com/photo-1',
-    bannerUrl: 'https://images.unsplash.com/photo-2',
-    address: 'Salt Lake City',
-    servicesCount: 6,
-    avgWaitTimeMin: 12,
+    type: 'Healthcare',
+    branchesCount: 6,
+    distanceKm: 1.2,
+    locality: 'Salt Lake City',
+    iconType: 'clinic',
   };
 
   const mockService: QueueServiceItem = {
@@ -33,7 +29,7 @@ describe('useQueueBookingFlow State Machine Hook', () => {
     tenantId: 'tenant-apollo',
     tenantName: 'Apollo Clinic',
     serviceName: 'General Consultation',
-    category: 'Healthcare',
+    category: 'clinics',
     categoryLabel: 'Healthcare',
     currentWaiting: 4,
     estWaitMinutes: 15,
@@ -46,19 +42,21 @@ describe('useQueueBookingFlow State Machine Hook', () => {
     distanceKm: 1.2,
     rating: 4.9,
     price: '$20',
+    iconType: 'clinic',
+    openingHours: '9:00 AM - 6:00 PM',
   };
 
   const mockBranch: BranchItem = {
     id: 'branch-01',
     tenantId: 'tenant-apollo',
+    tenantName: 'Apollo Clinic',
     name: 'Salt Lake Main Branch',
     address: 'Sector 5, Salt Lake',
     distanceKm: 1.2,
     activeCounters: 3,
-    totalWaiting: 8,
-    estWaitTimeMin: 18,
+    waitMinutes: 18,
     isOpen: true,
-    openHours: '9:00 AM - 6:00 PM',
+    openingHours: '9:00 AM - 6:00 PM',
   };
 
   beforeEach(() => {
