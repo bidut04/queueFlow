@@ -78,7 +78,10 @@ export const queuePortalApi = {
             : Math.round((0.8 + idx * 1.2) * 10) / 10;
           const isBank = org.type?.toLowerCase().includes('bank');
           const isPost = org.type?.toLowerCase().includes('post');
-          const isHealth = org.type?.toLowerCase().includes('hospital') || org.type?.toLowerCase().includes('clinic');
+          const isHealth =
+            org.type?.toLowerCase().includes('hospital') ||
+            org.type?.toLowerCase().includes('clinic') ||
+            org.type?.toLowerCase().includes('diagnostic');
 
           return {
             id: org.id,

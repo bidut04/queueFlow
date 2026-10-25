@@ -18,6 +18,8 @@ export const MOCK_USER_PROFILE: UserProfileInfo = {
 };
 
 export const MOCK_LOCATIONS: LocationArea[] = [
+  { id: 'loc-baguiati', label: 'Baguiati, Kolkata', latitude: 22.6182, longitude: 88.4291 },
+  { id: 'loc-phoolbagan', label: 'Phoolbagan, Kolkata', latitude: 22.5695, longitude: 88.3962 },
   { id: 'loc-1', label: 'Daspur, Paschim Medinipur', latitude: 22.6042, longitude: 87.7212 },
   { id: 'loc-2', label: 'Ghatal, Paschim Medinipur', latitude: 22.6667, longitude: 87.7167 },
   { id: 'loc-3', label: 'Kharagpur, Paschim Medinipur', latitude: 22.3424, longitude: 87.3275 },
