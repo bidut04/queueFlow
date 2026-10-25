@@ -168,15 +168,30 @@ export const queuePortalApi = {
     return [];
   },
 
-  bookToken: async (params: BookSlotParams): Promise<BookedTokenInfo> => {
+  bookToken: async (params: BookSlotParams, customIdempotencyKey?: string): Promise<BookedTokenInfo> => {
+    const idempotencyKey =
+      customIdempotencyKey ||
+      (typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
     try {
-      const res = await api.post<{ success: boolean; data: any }>(`/organizations/${params.tenantId}/book-token`, {
-        branchId: params.branchId,
-        serviceId: params.serviceId,
-        timeSlot: params.timeSlot,
-        customerName: params.customerName,
-        customerPhone: params.customerPhone,
-      });
+      const res = await api.post<{ success: boolean; data: any }>(
+        `/organizations/${params.tenantId}/book-token`,
+        {
+          branchId: params.branchId,
+          serviceId: params.serviceId,
+          timeSlot: params.timeSlot,
+          customerName: params.customerName,
+          customerPhone: params.customerPhone,
+          idempotencyKey,
+        },
+        {
+          headers: {
+            'Idempotency-Key': idempotencyKey,
+            'X-Idempotency-Key': idempotencyKey,
+          },
+        }
+      );
       const entry = (res as any)?.data || res;
       const tokenNumber = entry.tokenLabel || entry.tokenNumber || `TK-${Math.floor(100 + Math.random() * 900)}`;
 

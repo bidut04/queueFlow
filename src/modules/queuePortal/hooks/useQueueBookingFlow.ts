@@ -103,6 +103,7 @@ export const useQueueBookingFlow = (userLocation?: UserGeoLocation) => {
   }, []);
 
   const handleConfirmAndGetToken = useCallback(async (timeSlot: string) => {
+    if (isSubmittingBooking) return;
     setSelectedTimeSlot(timeSlot);
     setIsSubmittingBooking(true);
 
@@ -130,7 +131,7 @@ export const useQueueBookingFlow = (userLocation?: UserGeoLocation) => {
     } finally {
       setIsSubmittingBooking(false);
     }
-  }, [selectedTenant, selectedService, selectedBranch]);
+  }, [isSubmittingBooking, selectedTenant, selectedService, selectedBranch]);
 
   const handleGoToTrackQueue = useCallback(() => {
     setCurrentStep('track-queue');
