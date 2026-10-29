@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type {
   BookingFlowStep,
   TenantItem,
@@ -8,6 +8,7 @@ import type {
   UserGeoLocation,
 } from '../types/queuePortal.types';
 import { queuePortalApi } from '../api/queuePortal.api';
+import { socketClient } from '../../../socket/socket.client';
 
 export const useQueueBookingFlow = (userLocation?: UserGeoLocation) => {
   const [currentStep, setCurrentStep] = useState<BookingFlowStep>('home');
@@ -32,6 +33,18 @@ export const useQueueBookingFlow = (userLocation?: UserGeoLocation) => {
   const [isLoadingServices, setIsLoadingServices] = useState(false);
   const [isLoadingBranches, setIsLoadingBranches] = useState(false);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+
+  // Subscribe to real-time events for the active branch
+  useEffect(() => {
+    if (selectedBranch?.id) {
+      const room = socketClient.subscribeBranch(selectedBranch.id, selectedTenant?.id);
+      const displayRoom = socketClient.subscribeDisplay(selectedBranch.id, selectedTenant?.id);
+      return () => {
+        socketClient.unsubscribe(room);
+        socketClient.unsubscribe(displayRoom);
+      };
+    }
+  }, [selectedBranch?.id, selectedTenant?.id]);
 
   // Transitions
   const startBooking = useCallback(async (tenant?: TenantItem) => {

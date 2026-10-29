@@ -89,8 +89,14 @@ export const BranchDetailsStep: React.FC<BranchDetailsStepProps> = ({
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-1">
               <MapPin className="w-4 h-4" />
             </div>
-            <span className="text-[11px] font-bold text-slate-700">Daspur Coordinates</span>
-            <span className="text-[10px] text-slate-400 mb-2">22.6042° N, 87.7212° E</span>
+            <span className="text-[11px] font-bold text-slate-700">
+              {selectedBranch.name}
+            </span>
+            <span className="text-[10px] text-slate-400 mb-2">
+              {typeof selectedBranch.latitude === 'number' && typeof selectedBranch.longitude === 'number'
+                ? `${selectedBranch.latitude.toFixed(4)}° N, ${selectedBranch.longitude.toFixed(4)}° E`
+                : 'Coordinates Available'}
+            </span>
             <a
               href={`https://maps.google.com/?q=${encodeURIComponent(selectedBranch.name + ' ' + selectedBranch.address)}`}
               target="_blank"

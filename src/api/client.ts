@@ -27,12 +27,27 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export const getAuthToken = (): string | null => {
   try {
-    return (
-      localStorage.getItem('queflow_token') ||
-      localStorage.getItem('access_token') ||
-      localStorage.getItem('token') ||
-      null
-    );
+    const token = localStorage.getItem('queflow_token');
+    if (!token) return null;
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      localStorage.removeItem('queflow_token');
+      return null;
+    }
+
+    const payload = JSON.parse(atob(parts[1]));
+    // Purge foreign tokens (e.g. integer userId, missing session sid)
+    if (!payload || !payload.sid || typeof payload.sub !== 'string' || typeof payload.userId === 'number') {
+      console.warn('[AuthClient] Detected and purged foreign/invalid token');
+      localStorage.removeItem('queflow_token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('queflow_user');
+      return null;
+    }
+
+    return token;
   } catch {
     return null;
   }
@@ -97,23 +112,16 @@ export const apiClient = async <T = unknown>(
 
     if (!response.ok) {
       if (response.status === 401 && !url.includes('/auth/login')) {
-        const currentToken = getAuthToken();
-        const isMockSession = Boolean(currentToken && currentToken.startsWith('mock_token_'));
-
-        if (!isMockSession) {
-          try {
-            localStorage.removeItem('queflow_token');
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('token');
-            localStorage.removeItem('queflow_user');
-          } catch {
-            // ignore storage error
-          }
-          if (typeof window !== 'undefined' && !window.location.pathname.includes('login')) {
-            window.dispatchEvent(new CustomEvent('auth:unauthorized'));
-            window.history.pushState({ pageId: 'login' }, '', '/login');
-            window.dispatchEvent(new PopStateEvent('popstate'));
-          }
+        try {
+          localStorage.removeItem('queflow_token');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('token');
+          localStorage.removeItem('queflow_user');
+        } catch {
+          // ignore storage error
+        }
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('login')) {
+          window.location.href = '/login';
         }
       }
 

@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { queuePortalApi } from '../api/queuePortal.api';
+import { socketClient } from '../../../socket/socket.client';
+import { RealtimeEventType } from '../../../socket/socket.types';
+import { counterChime } from '../../../utils/audioChime';
 import type {
   ServiceCategory,
   QueueServiceItem,
@@ -51,6 +54,57 @@ export function useQueuePortal() {
   });
   const [upcomingAppointment, setUpcomingAppointment] = useState<UpcomingAppointmentItem | null>(null);
 
+  // Realtime Socket listener for live queue calling events
+  useEffect(() => {
+    socketClient.connect();
+
+    const unsubCalled = socketClient.on(RealtimeEventType.QUEUE_ENTRY_CALLED, (envelope: any) => {
+      const payload = envelope?.payload || envelope;
+      if (!payload) return;
+
+      const calledToken = payload.tokenLabel || (payload.tokenNumber ? `T${payload.tokenNumber}` : null);
+      if (!calledToken) return;
+
+      // Play harmonic chime cue
+      counterChime.playChime();
+
+      setLiveQueueData((prev) => ({
+        ...prev,
+        nowServingTicket: calledToken,
+        currentServingToken: calledToken,
+        serviceName: payload.serviceName || prev.serviceName,
+        lastUpdatedMs: Date.now(),
+        timeline: [
+          { stepNumber: 1, ticketNumber: calledToken, label: 'Now Serving', status: 'serving' },
+          { stepNumber: 2, ticketNumber: prev.nowServingTicket || 'TK01', label: 'Served', status: 'served' },
+          { stepNumber: 3, ticketNumber: 'TK03', label: 'Ahead of You', status: 'upcoming' },
+          { stepNumber: 4, ticketNumber: prev.userTicket, label: 'Your Token', status: 'user' },
+        ],
+      }));
+    });
+
+    const unsubDisplay = socketClient.on(RealtimeEventType.DISPLAY_CALL, (envelope: any) => {
+      const payload = envelope?.payload || envelope;
+      if (!payload?.tokenLabel) return;
+
+      // Play harmonic chime cue
+      counterChime.playChime();
+
+      setLiveQueueData((prev) => ({
+        ...prev,
+        nowServingTicket: payload.tokenLabel,
+        currentServingToken: payload.tokenLabel,
+        serviceName: payload.serviceName || prev.serviceName,
+        lastUpdatedMs: Date.now(),
+      }));
+    });
+
+    return () => {
+      unsubCalled();
+      unsubDisplay();
+    };
+  }, []);
+
   const hasInitiatedLocation = useRef(false);
 
   // 1. Live location detection
@@ -61,7 +115,7 @@ export function useQueuePortal() {
       setUserLocation(geo);
       setCurrentLocationText(`${geo.locality}, ${geo.city}`);
     } catch {
-      setCurrentLocationText('Daspur, Paschim Medinipur');
+      setCurrentLocationText('Kolkata, West Bengal');
     } finally {
       setIsLocating(false);
     }

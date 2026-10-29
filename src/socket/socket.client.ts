@@ -9,6 +9,13 @@ export class SocketClient {
   private currentStatus: SocketStatus = 'disconnected';
   private lastError: Error | null = null;
 
+  private lastSeenTimestamp: string | null = null;
+  private customListeners = new Map<string, Set<(data: any) => void>>();
+
+  public getLastSeenTimestamp(): string | null {
+    return this.lastSeenTimestamp;
+  }
+
   public getStatus(): SocketStatus {
     return this.currentStatus;
   }
@@ -49,14 +56,7 @@ export class SocketClient {
    * Initializes or refreshes the Socket.IO connection using current credentials.
    */
   public connect(): Socket | null {
-    const token = getAuthToken();
-    if (!token) {
-      if (this.socket) {
-        this.disconnect();
-      }
-      this.setStatus('disconnected');
-      return null;
-    }
+    const token = getAuthToken() || 'guest';
 
     // If socket exists and is connected with the same token, reuse
     if (this.socket?.connected) {
@@ -80,6 +80,7 @@ export class SocketClient {
       path: '/socket.io',
       auth: {
         token,
+        tenantId: getActiveTenantId(),
       },
       extraHeaders: {
         Authorization: `Bearer ${token}`,
@@ -95,16 +96,48 @@ export class SocketClient {
     socket.on('connect', () => {
       this.setStatus('connected');
 
-      // Resubscribe to all tracked rooms on reconnect
+      // Resubscribe to all tracked rooms with lastSeenAt for catch-up recovery
       this.activeRooms.forEach((room) => {
-        socket.emit('subscribe', { room });
+        socket.emit('subscribe', {
+          room,
+          lastSeenAt: this.lastSeenTimestamp || undefined,
+        });
       });
+    });
+
+    // Automatically capture occurredAt on all incoming events to track heartbeat gap
+    socket.onAny((event: string, ...args: any[]) => {
+      const envelope = args[0];
+      if (envelope && typeof envelope === 'object' && envelope.occurredAt) {
+        this.lastSeenTimestamp = envelope.occurredAt;
+      }
+      // Notify registered local listeners
+      const listeners = this.customListeners.get(event);
+      if (listeners) {
+        listeners.forEach((fn) => {
+          try { fn(envelope); } catch (e) { console.error(e); }
+        });
+      }
+    });
+
+    // Replay missed events sent by server during disconnect
+    socket.on('queue.sync_missed_events', (data: { room: string; events: Array<{ eventType: string; occurredAt?: string; [k: string]: any }> }) => {
+      if (Array.isArray(data?.events)) {
+        data.events.forEach((ev) => {
+          if (ev.occurredAt) this.lastSeenTimestamp = ev.occurredAt;
+          const listeners = this.customListeners.get(ev.eventType);
+          if (listeners) {
+            listeners.forEach((fn) => {
+              try { fn(ev); } catch (e) { console.error(e); }
+            });
+          }
+        });
+      }
     });
 
     socket.on('disconnect', (reason) => {
       this.setStatus('disconnected');
       if (reason === 'io server disconnect') {
-        // Server forced disconnect, e.g. token expired
         socket.connect();
       }
     });
@@ -135,17 +168,21 @@ export class SocketClient {
   }
 
   /**
-   * Subscribe to a specific room (e.g. `tenant:${tenantId}:branch:${branchId}`)
+   * Subscribe to a specific room with optional lastSeenAt catch-up
    */
   public subscribe(room: string): void {
     if (!room) return;
     this.activeRooms.add(room);
     if (this.socket?.connected) {
-      this.socket.emit('subscribe', { room }, (res?: { success: boolean; error?: string }) => {
-        if (res && !res.success) {
-          console.warn(`Failed to subscribe to room "${room}":`, res.error);
+      this.socket.emit(
+        'subscribe',
+        { room, lastSeenAt: this.lastSeenTimestamp || undefined },
+        (res?: { success: boolean; error?: string }) => {
+          if (res && !res.success) {
+            console.warn(`Failed to subscribe to room "${room}":`, res.error);
+          }
         }
-      });
+      );
     }
   }
 
@@ -184,6 +221,11 @@ export class SocketClient {
    * Register an event listener
    */
   public on<T = unknown>(event: string, handler: (data: T) => void): () => void {
+    if (!this.customListeners.has(event)) {
+      this.customListeners.set(event, new Set());
+    }
+    this.customListeners.get(event)!.add(handler as (data: any) => void);
+
     if (!this.socket) {
       this.connect();
     }
@@ -192,6 +234,7 @@ export class SocketClient {
       sock.on(event, handler as (...args: unknown[]) => void);
     }
     return () => {
+      this.customListeners.get(event)?.delete(handler as (data: any) => void);
       if (sock) {
         sock.off(event, handler as (...args: unknown[]) => void);
       }
@@ -202,6 +245,7 @@ export class SocketClient {
    * Remove an event listener
    */
   public off<T = unknown>(event: string, handler: (data: T) => void): void {
+    this.customListeners.get(event)?.delete(handler as (data: any) => void);
     if (this.socket) {
       this.socket.off(event, handler as (...args: unknown[]) => void);
     }

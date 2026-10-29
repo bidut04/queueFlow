@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, getAuthToken } from './client';
 
 export interface LoginCredentials {
   email: string;
@@ -134,11 +134,7 @@ export const authApi = {
   },
 
   isAuthenticated: (): boolean => {
-    const token =
-      localStorage.getItem(TOKEN_KEY) ||
-      localStorage.getItem('access_token') ||
-      localStorage.getItem('token');
-    return Boolean(token);
+    return Boolean(getAuthToken());
   },
 
   isSuperAdmin: (): boolean => {

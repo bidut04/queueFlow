@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Sparkles, Layers3, AlertCircle } from 'lucide-react';
 import { authApi } from '../api/auth.api';
 
@@ -21,6 +21,102 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+    useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const userParam = params.get('user');
+    const oauthError = params.get('error');
+
+    if (oauthError) {
+      const msg = decodeURIComponent(oauthError);
+      setErrorMessage(msg);
+      showToast(msg);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
+    if (token) {
+      localStorage.setItem('queflow_token', token);
+      localStorage.setItem('access_token', token);
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      let parsedUser: any = null;
+      if (userParam) {
+        try {
+          parsedUser = JSON.parse(decodeURIComponent(userParam));
+        } catch (e) {
+          console.error('Failed to parse user from OAuth redirect:', e);
+        }
+      }
+
+      let tokenRole = '';
+      try {
+        const payloadBase64 = token.split('.')[1];
+        if (payloadBase64) {
+          const payload = JSON.parse(atob(payloadBase64));
+          tokenRole = payload.role || '';
+        }
+      } catch {
+        // ignore
+      }
+
+      const isSuper =
+        parsedUser?.isSuperAdmin === true ||
+        parsedUser?.userType === 'PLATFORM_SUPER_ADMIN' ||
+        tokenRole === 'SUPER_ADMIN' ||
+        tokenRole === 'PLATFORM_OWNER' ||
+        tokenRole === 'PLATFORM_ADMIN';
+
+      const isTenantAdmin =
+        !isSuper &&
+        (parsedUser?.userType === 'TENANT_ADMIN' ||
+          tokenRole === 'ADMIN' ||
+          tokenRole === 'TENANT_ADMIN' ||
+          tokenRole === 'TENANT_OWNER' ||
+          (parsedUser?.tenants && Array.isArray(parsedUser.tenants) && parsedUser.tenants.length > 0));
+
+      const userRole = isSuper
+        ? 'SUPER_ADMIN'
+        : isTenantAdmin
+        ? 'TENANT_ADMIN'
+        : (parsedUser?.role || tokenRole || 'USER');
+
+      const userInfo = {
+        email: parsedUser?.email || '',
+        role: userRole,
+        userType: isSuper ? 'PLATFORM_SUPER_ADMIN' : isTenantAdmin ? 'TENANT_ADMIN' : 'USER',
+        isSuperAdmin: isSuper,
+        loginTime: new Date().toISOString(),
+        tenants: parsedUser?.tenants || [],
+      };
+
+      // Crucial: Store user profile in queflow_user so authApi and AppLayout recognize Tenant Admin
+      localStorage.setItem('queflow_user', JSON.stringify(userInfo));
+      window.dispatchEvent(new CustomEvent('auth:login'));
+
+      if (isSuper) {
+        showToast('Welcome Super Admin! Redirecting to Control Tower...');
+        setTimeout(() => {
+          window.location.href = '/platform';
+        }, 500);
+      } else if (isTenantAdmin) {
+        showToast('Welcome Tenant Admin! Opening Management Console...');
+        setTimeout(() => {
+          navigateTo('/dashboard');
+        }, 500);
+      } else {
+        showToast('Welcome! Opening Queue & Booking Portal...');
+        setTimeout(() => {
+          navigateTo('/queue-portal');
+        }, 500);
+      }
+    }
+  }, []);
+
+  const handleGoogleLogin = () => {
+    window.location.href = '/api/v1/auth/google';
   };
 
   const navigateTo = (path: string) => {
@@ -190,7 +286,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 12 }}>
               <button
                 type="button"
-                onClick={() => showToast('Single Sign-On is disabled. Please enter your email and password.')}
+                onClick={handleGoogleLogin}
                 style={{
                   width: '100%',
                   padding: '7px 12px',

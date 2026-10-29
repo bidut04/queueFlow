@@ -1,3 +1,4 @@
+import { PageSkeleton } from '../ui/PageSkeleton';
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -29,32 +30,7 @@ const OrgAdminPortalPage = lazy(() => import('../../pages/OrgAdminPortalPage').t
 const SetupPasswordPage = lazy(() => import('../../pages/SetupPasswordPage').then((m) => ({ default: m.SetupPasswordPage })));
 const QueueBookingPortalPage = lazy(() => import('../../pages/QueueBookingPortalPage').then((m) => ({ default: m.QueueBookingPortalPage })));
 
-const PageLoadingFallback: React.FC = () => (
-  <div
-    style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '400px',
-      gap: 12,
-    }}
-  >
-    <div
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: '50%',
-        border: '3px solid #e2e8f0',
-        borderTopColor: '#2563eb',
-        animation: 'spin 0.8s linear infinite',
-      }}
-    />
-    <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>
-      Loading workspace view...
-    </span>
-  </div>
-);
+const PageLoadingFallback: React.FC = () => <PageSkeleton />;
 
 export const AppLayout: React.FC = () => {
   // Read clean initial page from URL path e.g. /platform or /bookings

@@ -15,6 +15,14 @@ export default defineConfig({
         target: 'http://localhost:8989',
         ws: true,
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (err: any) => {
+            if (err?.code && ['ECONNABORTED', 'ECONNRESET', 'EPIPE'].includes(err.code)) {
+              return;
+            }
+            console.error('[vite] ws proxy error:', err);
+          });
+        },
       },
     },
   },

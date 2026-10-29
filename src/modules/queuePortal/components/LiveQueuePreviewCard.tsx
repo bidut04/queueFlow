@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Mail, Users, Clock, Zap, Info } from 'lucide-react';
+import { Mail, Users, Volume2, VolumeX, Clock, Zap, Info } from 'lucide-react';
 import type { LiveQueuePreviewData } from '../types/queuePortal.types';
+import { counterChime } from '../../../utils/audioChime';
 
 export interface LiveQueuePreviewCardProps {
   queueData: LiveQueuePreviewData;
@@ -12,6 +13,16 @@ export const LiveQueuePreviewCard: React.FC<LiveQueuePreviewCardProps> = ({
   onToggleHurryMode,
 }) => {
   const [hurryMode, setHurryMode] = useState<boolean>(queueData.hurryModeEnabled);
+  const [isMuted, setIsMuted] = useState<boolean>(() => counterChime.getIsMuted());
+
+  const handleToggleMute = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    counterChime.setMuted(nextMuted);
+    if (!nextMuted) {
+      counterChime.playChime();
+    }
+  };
 
   const handleToggleHurry = () => {
     const nextState = !hurryMode;
@@ -21,8 +32,18 @@ export const LiveQueuePreviewCard: React.FC<LiveQueuePreviewCardProps> = ({
     }
   };
 
+  const isRecentCall = Boolean(
+    queueData.lastUpdatedMs && Date.now() - queueData.lastUpdatedMs < 3500
+  );
+
   return (
-    <div className="bg-[#f0fbf7]/60 rounded-xl border border-emerald-100/90 p-3 sm:p-3.5 shadow-2xs w-full max-w-full min-w-0 overflow-hidden">
+    <div
+      className={`rounded-xl border p-3 sm:p-3.5 shadow-2xs w-full max-w-full min-w-0 overflow-hidden transition-all duration-500 ${
+        isRecentCall
+          ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-300'
+          : 'bg-[#f0fbf7]/60 border-emerald-100/90'
+      }`}
+    >
       {/* Top Header */}
       <div className="flex items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -39,10 +60,21 @@ export const LiveQueuePreviewCard: React.FC<LiveQueuePreviewCardProps> = ({
           </div>
         </div>
 
-        {/* Status Pill */}
-        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/90 text-emerald-800 text-[10px] font-bold shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Active</span>
+        {/* Audio Toggle & Status Pill */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleToggleMute}
+            title={isMuted ? 'Unmute counter chime' : 'Mute counter chime'}
+            className="p-1 rounded-md text-slate-400 hover:text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
+          >
+            {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-600" />}
+          </button>
+
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/90 text-emerald-800 text-[10px] font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Live Sync</span>
+          </div>
         </div>
       </div>
 
@@ -54,7 +86,11 @@ export const LiveQueuePreviewCard: React.FC<LiveQueuePreviewCardProps> = ({
             <Users className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
             <span className="truncate">Serving</span>
           </div>
-          <span className="inline-block px-1.5 py-0.5 bg-emerald-600 text-white font-extrabold text-xs rounded tracking-wider shadow-2xs truncate max-w-full">
+          <span
+            className={`inline-block px-1.5 py-0.5 text-white font-extrabold text-xs rounded tracking-wider shadow-2xs truncate max-w-full transition-all duration-300 ${
+              isRecentCall ? 'bg-emerald-500 scale-105 animate-pulse' : 'bg-emerald-600'
+            }`}
+          >
             {queueData.nowServingTicket}
           </span>
         </div>

@@ -8,6 +8,7 @@ import type {
   UserGeoLocation,
   BookedTokenInfo,
 } from '../types/queuePortal.types';
+import { MOCK_ORGANIZATION_SERVICES, MOCK_BRANCHES, MOCK_TENANTS } from '../data/queuePortalMockData';
 
 // Haversine formula to calculate distance between two coordinates in kilometers
 export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -33,10 +34,98 @@ export interface BookSlotParams {
   customerPhone?: string;
 }
 
+interface BackendBranchAddress {
+  street?: string;
+  locality?: string;
+  city?: string;
+  state?: string;
+  district?: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+interface BackendLocationItem {
+  id: string;
+  name: string;
+  code?: string;
+  address?: BackendBranchAddress | string;
+  phone?: string;
+  locality?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  status?: string;
+  tenantId?: string;
+  _count?: {
+    counters?: number;
+  };
+}
+
+interface BackendOrganizationItem {
+  id: string;
+  name: string;
+  slug?: string;
+  type?: string;
+  locality?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  branchesCount?: number;
+  locations?: BackendLocationItem[];
+  primaryBranch?: BackendLocationItem | null;
+  _count?: {
+    locations?: number;
+    services?: number;
+  };
+}
+
+interface BackendServiceItem {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  estimatedDurationSec?: number;
+  status?: string;
+  tenantId?: string;
+}
+
+interface BackendBookTokenResult {
+  tokenLabel?: string;
+  tokenNumber?: string | number;
+  id?: string;
+  status?: string;
+}
+
+interface BackendQueueEntry {
+  id?: string;
+  status?: string;
+  tokenLabel?: string;
+  tokenNumber?: number | string;
+}
+
+interface BackendBookingItem {
+  id: string;
+  serviceName?: string;
+  date?: string;
+  timeSlot?: string;
+  branchName?: string;
+  status?: 'Confirmed' | 'Pending' | 'Cancelled';
+}
+
+const DEFAULT_ARCHITECTURAL_IMAGES: string[] = [
+  'https://images.unsplash.com/photo-1554469384-e58fac16e23a?auto=format&fit=crop&w=700&q=80',
+  'https://images.unsplash.com/photo-1541888946425-d0fbb18f15f7?auto=format&fit=crop&w=700&q=80',
+  'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=700&q=80',
+  'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=700&q=80',
+  'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=700&q=80',
+  'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=700&q=80',
+];
+
 export const queuePortalApi = {
   detectCurrentLocation: async (): Promise<UserGeoLocation> => {
     return new Promise((resolve) => {
-      const fallback = { latitude: 22.6038, longitude: 87.7265, locality: 'Daspur', city: 'Paschim Medinipur' };
+      const fallback: UserGeoLocation = { latitude: 22.5726, longitude: 88.3639, locality: 'Kolkata', city: 'West Bengal' };
       if (!navigator.geolocation) return resolve(fallback);
 
       navigator.geolocation.getCurrentPosition(
@@ -48,7 +137,7 @@ export const queuePortalApi = {
               { headers: { 'User-Agent': 'QueueFlow-App/1.0' } }
             );
             if (res.ok) {
-              const data = await res.json();
+              const data = await res.json() as { address?: Record<string, string> };
               const addr = data.address || {};
               const locality = addr.suburb || addr.neighbourhood || addr.town || addr.village || 'Current Area';
               const city = addr.city || addr.state_district || addr.state || 'West Bengal';
@@ -67,15 +156,32 @@ export const queuePortalApi = {
 
   getTenants: async (userLocation?: UserGeoLocation): Promise<TenantItem[]> => {
     try {
-      const res = await api.get<{ success: boolean; data: any[] }>('/organizations');
-      const list = Array.isArray(res) ? res : res?.data || [];
+      const res = await api.get<{ success: boolean; data: BackendOrganizationItem[] }>('/organizations');
+      const list = Array.isArray(res) ? (res as unknown as BackendOrganizationItem[]) : res?.data || [];
       if (Array.isArray(list) && list.length > 0) {
-        return list.map((org: any, idx: number) => {
-          const lat = org.latitude || 22.6042 + idx * 0.05;
-          const lon = org.longitude || 87.7212 + idx * 0.04;
+        return list.map((org: BackendOrganizationItem, idx: number): TenantItem => {
+          const primaryBranch = org.primaryBranch || (Array.isArray(org.locations) && org.locations[0]) || null;
+          const branchAddr: BackendBranchAddress =
+            primaryBranch && typeof primaryBranch.address === 'object' && primaryBranch.address !== null
+              ? primaryBranch.address
+              : {};
+
+          const lat =
+            org.latitude ??
+            primaryBranch?.latitude ??
+            branchAddr.latitude ??
+            (userLocation ? userLocation.latitude + (idx * 0.01) : 22.5726 + idx * 0.02);
+
+          const lon =
+            org.longitude ??
+            primaryBranch?.longitude ??
+            branchAddr.longitude ??
+            (userLocation ? userLocation.longitude + (idx * 0.01) : 88.3639 + idx * 0.02);
+
           const dist = userLocation
             ? calculateDistanceKm(userLocation.latitude, userLocation.longitude, lat, lon)
             : Math.round((0.8 + idx * 1.2) * 10) / 10;
+
           const isBank = org.type?.toLowerCase().includes('bank');
           const isPost = org.type?.toLowerCase().includes('post');
           const isHealth =
@@ -83,36 +189,46 @@ export const queuePortalApi = {
             org.type?.toLowerCase().includes('clinic') ||
             org.type?.toLowerCase().includes('diagnostic');
 
+          const localityName =
+            org.locality ||
+            primaryBranch?.locality ||
+            branchAddr.locality ||
+            branchAddr.city ||
+            org.city ||
+            (userLocation ? `${userLocation.locality}, ${userLocation.city}` : 'Kolkata, WB');
+
           return {
             id: org.id,
             name: org.name,
             slug: org.slug || org.id,
-            type: org.type || 'General Service',
-            branchesCount: org._count?.locations ?? org.branchesCount ?? 1,
+            type: org.type || 'BANK',
+            branchesCount: org._count?.locations ?? org.locations?.length ?? org.branchesCount ?? 1,
             distanceKm: dist,
-            locality: org.locality || 'Paschim Medinipur, WB',
+            locality: localityName,
             latitude: lat,
             longitude: lon,
             iconType: isBank ? 'bank' : isPost ? 'mail' : isHealth ? 'clinic' : 'government',
+            imageUrl: DEFAULT_ARCHITECTURAL_IMAGES[idx % DEFAULT_ARCHITECTURAL_IMAGES.length],
+            isPopular: idx === 0,
           };
         });
       }
     } catch (err) {
-      console.warn('Could not fetch organizations from API:', err);
+      console.warn('Could not fetch organizations from API, using curated mock:', err);
     }
-    return [];
+    return MOCK_TENANTS;
   },
 
   getServicesForTenant: async (tenantId: string): Promise<QueueServiceItem[]> => {
     try {
-      const res = await api.get<{ success: boolean; data: any[] }>(`/organizations/${tenantId}/services`);
-      const list = Array.isArray(res) ? res : res?.data || [];
+      const res = await api.get<{ success: boolean; data: BackendServiceItem[] }>(`/organizations/${tenantId}/services`);
+      const list = Array.isArray(res) ? (res as unknown as BackendServiceItem[]) : res?.data || [];
       if (Array.isArray(list) && list.length > 0) {
-        return list.map((s: any, idx: number) => ({
+        return list.map((s: BackendServiceItem, idx: number): QueueServiceItem => ({
           id: s.id,
           name: s.name,
-          category: s.code || 'Service',
-          categoryLabel: s.code || 'General',
+          category: 'banks',
+          categoryLabel: s.code || 'Banking',
           description: s.description || 'Counter service with priority queue ticket token.',
           branchName: 'Main Branch Counter',
           distanceKm: 0.8,
@@ -129,24 +245,32 @@ export const queuePortalApi = {
     } catch (err) {
       console.warn(`Could not fetch services for tenant ${tenantId}:`, err);
     }
-    return [];
+    return MOCK_ORGANIZATION_SERVICES[tenantId] || MOCK_ORGANIZATION_SERVICES['tenant-sbi'] || [];
   },
 
   getBranchesForTenant: async (tenantId: string, userLocation?: UserGeoLocation): Promise<BranchItem[]> => {
     try {
-      const res = await api.get<{ success: boolean; data: any[] }>(`/organizations/${tenantId}/branches`);
-      const list = Array.isArray(res) ? res : res?.data || [];
+      const res = await api.get<{ success: boolean; data: BackendLocationItem[] }>(`/organizations/${tenantId}/branches`);
+      const list = Array.isArray(res) ? (res as unknown as BackendLocationItem[]) : res?.data || [];
       if (Array.isArray(list) && list.length > 0) {
-        return list.map((b: any, idx: number) => {
-          const addr = typeof b.address === 'object' && b.address !== null ? b.address : {};
-          const lat = addr.latitude || 22.6042 + idx * 0.08;
-          const lon = addr.longitude || 87.7212 + idx * 0.06;
+        return list.map((b: BackendLocationItem, idx: number): BranchItem => {
+          const addr: BackendBranchAddress = typeof b.address === 'object' && b.address !== null ? b.address : {};
+          const lat =
+            b.latitude ??
+            addr.latitude ??
+            (userLocation ? userLocation.latitude + (idx * 0.01) : 22.5726 + idx * 0.02);
+          const lon =
+            b.longitude ??
+            addr.longitude ??
+            (userLocation ? userLocation.longitude + (idx * 0.01) : 88.3639 + idx * 0.02);
+
           const dist = userLocation
             ? calculateDistanceKm(userLocation.latitude, userLocation.longitude, lat, lon)
             : Math.round((1.2 + idx * 4.5) * 10) / 10;
+
           const addressText = addr.street
-            ? `${addr.street}, ${addr.city || ''} - ${addr.postalCode || ''}`
-            : (typeof b.address === 'string' ? b.address : 'Main Town Counter, Paschim Medinipur');
+            ? `${addr.street}, ${addr.locality ? `${addr.locality}, ` : ''}${addr.city || ''} ${addr.postalCode ? `- ${addr.postalCode}` : ''}`.trim()
+            : (typeof b.address === 'string' ? b.address : (b.name ? `${b.name}, Kolkata` : 'Main Branch Counter'));
 
           return {
             id: b.id,
@@ -159,7 +283,7 @@ export const queuePortalApi = {
             activeCounters: b._count?.counters || 3,
             openingHours: '9:30 AM – 4:00 PM (Mon – Fri)',
             isOpen: b.status === 'ACTIVE',
-            photoUrl: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=400&q=80',
+            imageUrl: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=400&q=80',
             latitude: lat,
             longitude: lon,
           };
@@ -168,7 +292,23 @@ export const queuePortalApi = {
     } catch (err) {
       console.warn(`Could not fetch branches for tenant ${tenantId}:`, err);
     }
-    return [];
+    const filtered = MOCK_BRANCHES.filter((b) => b.tenantId === tenantId);
+    if (filtered.length > 0) return filtered;
+    return [
+      {
+        id: `branch-${tenantId}-1`,
+        name: 'Main Branch Counter',
+        tenantId,
+        tenantName: 'Organization Branch',
+        address: 'Kolkata City Central, West Bengal',
+        distanceKm: 3.0,
+        activeCounters: 2,
+        openingHours: '9:30 AM – 4:00 PM (Mon – Fri)',
+        isOpen: true,
+        waitMinutes: 10,
+        imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f9?auto=format&fit=crop&w=500&q=80',
+      },
+    ];
   },
 
   bookToken: async (params: BookSlotParams, customIdempotencyKey?: string): Promise<BookedTokenInfo> => {
@@ -178,7 +318,7 @@ export const queuePortalApi = {
         ? crypto.randomUUID()
         : `idemp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`);
     try {
-      const res = await api.post<{ success: boolean; data: any }>(
+      const res = await api.post<{ success: boolean; data: BackendBookTokenResult }>(
         `/organizations/${params.tenantId}/book-token`,
         {
           branchId: params.branchId,
@@ -195,8 +335,8 @@ export const queuePortalApi = {
           },
         }
       );
-      const entry = (res as any)?.data || res;
-      const tokenNumber = entry.tokenLabel || entry.tokenNumber || `TK-${Math.floor(100 + Math.random() * 900)}`;
+      const entry: BackendBookTokenResult = res?.data || (res as unknown as BackendBookTokenResult) || {};
+      const tokenNumber = entry.tokenLabel || (entry.tokenNumber ? String(entry.tokenNumber) : `TK-${Math.floor(100 + Math.random() * 900)}`);
 
       return {
         tokenNumber,
@@ -239,10 +379,10 @@ export const queuePortalApi = {
   getLiveQueue: async (branchId?: string, serviceId?: string): Promise<LiveQueuePreviewData> => {
     try {
       if (branchId) {
-        const res = await api.get<{ success: boolean; data: any[] }>(`/queue/branch/${branchId}/active`);
-        const entries = Array.isArray(res) ? res : (res as any)?.data || [];
+        const res = await api.get<{ success: boolean; data: BackendQueueEntry[] }>(`/queue/branch/${branchId}/active`);
+        const entries = Array.isArray(res) ? (res as unknown as BackendQueueEntry[]) : res?.data || [];
         if (entries.length > 0) {
-          const serving = entries.find((e: any) => e.status === 'CALLED' || e.status === 'IN_SERVICE') || entries[0];
+          const serving = entries.find((e: BackendQueueEntry) => e.status === 'CALLED' || e.status === 'IN_SERVICE') || entries[0];
           const servingTicket = serving.tokenLabel || (serving.tokenNumber ? `K0${serving.tokenNumber}` : 'K021');
           return {
             id: serviceId || 'live-queue',
@@ -288,8 +428,8 @@ export const queuePortalApi = {
 
   getUserAppointments: async (): Promise<UpcomingAppointmentItem | null> => {
     try {
-      const res = await api.get<{ success: boolean; data: any[] }>('/bookings');
-      const list = Array.isArray(res) ? res : (res as any)?.data || [];
+      const res = await api.get<{ success: boolean; data: BackendBookingItem[] }>('/bookings');
+      const list = Array.isArray(res) ? (res as unknown as BackendBookingItem[]) : res?.data || [];
       if (Array.isArray(list) && list.length > 0) {
         const latest = list[0];
         return {
@@ -297,7 +437,7 @@ export const queuePortalApi = {
           serviceName: latest.serviceName || 'Token Booking',
           dateText: `${latest.date || 'Today'} • ${latest.timeSlot || 'Scheduled'}`,
           branchName: latest.branchName || 'Branch Counter',
-          status: 'Confirmed',
+          status: latest.status || 'Confirmed',
         };
       }
     } catch {

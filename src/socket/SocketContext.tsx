@@ -20,7 +20,7 @@ import {
 } from './socket.types';
 import { queueKeys, bookingKeys } from '../api/queryKeys';
 import { toast } from '../components/ui/Toast';
-import { getAuthToken, getActiveTenantId } from '../api/client';
+import { getActiveTenantId } from '../api/client';
 
 export interface SocketContextValue {
   status: SocketStatus;
@@ -55,12 +55,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({
 
   // Sync socket client connection with auth state
   const syncConnection = useCallback(() => {
-    const token = getAuthToken();
-    if (token) {
-      socketClient.connect();
-    } else {
-      socketClient.disconnect();
-    }
+    socketClient.connect();
   }, []);
 
   useEffect(() => {

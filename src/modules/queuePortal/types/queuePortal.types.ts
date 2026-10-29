@@ -32,7 +32,20 @@ export interface TenantItem {
   latitude?: number;
   longitude?: number;
   iconType?: ServiceIconType;
+  imageUrl?: string;
+  isPopular?: boolean;
+  categoryLabel?: string;
 }
+
+export type OrganizationCategoryFilter = 'all' | 'bank' | 'government' | 'clinic' | 'mail' | 'other';
+export type OrganizationDistanceFilter = 'all' | '5' | '10' | '15';
+
+export interface NearbyStats {
+  banksCount: number;
+  governmentCount: number;
+  serviceCentersCount: number;
+}
+
 
 export interface BranchItem {
   id: string;
@@ -90,6 +103,7 @@ export interface LiveQueuePreviewData {
   estWaitRange: string;
   timeline: QueueTimelineStep[];
   hurryModeEnabled: boolean;
+  lastUpdatedMs?: number;
 }
 
 export interface UpcomingAppointmentItem {

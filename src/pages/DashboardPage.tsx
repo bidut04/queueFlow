@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { MapPin } from 'lucide-react';
+import { PageSkeleton } from '../components/ui/PageSkeleton';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { BookingTrendChart } from '../components/dashboard/BookingTrendChart';
 import { BranchPerformance } from '../components/dashboard/BranchPerformance';
@@ -26,7 +27,11 @@ export interface DashboardPageProps {
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
-  const { data: bookingsList = [] } = useBookings();
+  const { data: bookingsList = [], isLoading } = useBookings();
+
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
 
   const dynamicMetrics = useMemo<MetricCardData[]>(() => {
     const total = bookingsList.length;
