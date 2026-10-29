@@ -94,6 +94,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, initialMessage
 
       // Crucial: Store user profile in queflow_user so authApi and AppLayout recognize Tenant Admin
       localStorage.setItem('queflow_user', JSON.stringify(userInfo));
+      if (userInfo.tenants && userInfo.tenants.length > 0) {
+        localStorage.setItem('queflow_active_tenant', userInfo.tenants[0].tenantId || userInfo.tenants[0].id);
+      }
       window.dispatchEvent(new CustomEvent('auth:login'));
 
       if (isSuper) {

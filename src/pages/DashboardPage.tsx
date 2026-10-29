@@ -29,10 +29,6 @@ export interface DashboardPageProps {
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const { data: bookingsList = [], isLoading } = useBookings();
 
-  if (isLoading) {
-    return <PageSkeleton />;
-  }
-
   const dynamicMetrics = useMemo<MetricCardData[]>(() => {
     const total = bookingsList.length;
     const waiting = bookingsList.filter((b) => b.status === 'Waiting').length;
@@ -97,6 +93,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       }
     ];
   }, [bookingsList]);
+
+  if (isLoading) {
+    return <PageSkeleton />;
+  }
 
   // Columns definition for Recent Bookings Global Table
   const bookingColumns: TableColumn<Booking>[] = [

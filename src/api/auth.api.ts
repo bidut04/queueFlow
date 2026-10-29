@@ -102,6 +102,9 @@ export const authApi = {
       };
 
       localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (user.tenants && user.tenants.length > 0) {
+        localStorage.setItem('queflow_active_tenant', user.tenants[0].tenantId || user.tenants[0].id);
+      }
       window.dispatchEvent(new CustomEvent('auth:login'));
     }
 
