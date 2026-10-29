@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RotateCcw } from 'lucide-react';
+import { Plus, RotateCcw, ArrowLeftRight, Activity, Database, CheckCircle2 } from 'lucide-react';
 import { platformStore } from '../services/platformState';
 import { usePlatformMigrations, useRollbackMigration } from '../hooks';
 import type { TenantMigrationJob, PlatformPageId } from '../types/platform';
@@ -25,6 +25,11 @@ export const MigrationsPage: React.FC<MigrationsPageProps> = () => {
 
   const migrations = (liveMigrations && liveMigrations.length > 0) ? liveMigrations : storeMigrations;
 
+  const activeMigrations = migrations.filter(
+    (m) => m.status === 'COPYING' || m.status === 'VERIFYING' || m.status === 'CUTTING_OVER'
+  );
+  const completedMigrations = migrations.filter((m) => m.status === 'COMPLETED');
+
   const handleRollback = async (migrationId: string, orgName: string) => {
     if (window.confirm(`SECURITY ROLLBACK: Are you sure you want to rollback migration ${migrationId} for ${orgName}? The previous shard mapping will be restored.`)) {
       try {
@@ -36,22 +41,21 @@ export const MigrationsPage: React.FC<MigrationsPageProps> = () => {
     }
   };
 
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'COMPLETED':
-        return { bg: '#d1fae5', color: '#047857' };
+        return { bg: '#d1fae5', color: '#047857', border: '#a7f3d0' };
       case 'CUTTING_OVER':
       case 'COPYING':
       case 'VERIFYING':
-        return { bg: '#e0e7ff', color: '#3730a3' };
+        return { bg: '#e0e7ff', color: '#3730a3', border: '#c7d2fe' };
       case 'PLANNED':
-        return { bg: '#fef3c7', color: '#b45309' };
+        return { bg: '#fef3c7', color: '#b45309', border: '#fde68a' };
       case 'ROLLING_BACK':
       case 'FAILED':
-        return { bg: '#fee2e2', color: '#b91c1c' };
+        return { bg: '#fee2e2', color: '#b91c1c', border: '#fecaca' };
       default:
-        return { bg: '#f3f4f6', color: '#4b5563' };
+        return { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
     }
   };
 
@@ -104,7 +108,8 @@ export const MigrationsPage: React.FC<MigrationsPageProps> = () => {
               padding: '2px 8px',
               borderRadius: 4,
               backgroundColor: badge.bg,
-              color: badge.color
+              color: badge.color,
+              border: `1px solid ${badge.border}`
             }}
           >
             {mig.status}
@@ -172,7 +177,48 @@ export const MigrationsPage: React.FC<MigrationsPageProps> = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Top 4 KPI Metric Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
+        <div className="qf-card" style={{ padding: '12px 14px', borderLeft: '3px solid #4f46e5' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>Total Shard Cutover Jobs</span>
+            <ArrowLeftRight size={15} color="#4f46e5" />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: '4px 0 2px 0' }}>{migrations.length}</h3>
+          <span style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>Lifecycle shard operations</span>
+        </div>
+
+        <div className="qf-card" style={{ padding: '12px 14px', borderLeft: '3px solid #3b82f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>In-Flight Active Sync</span>
+            <Activity size={15} color="#3b82f6" />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: '4px 0 2px 0' }}>{activeMigrations.length}</h3>
+          <span style={{ fontSize: 10, color: activeMigrations.length > 0 ? '#3b82f6' : '#10b981', fontWeight: 600 }}>
+            {activeMigrations.length > 0 ? 'Live replication in progress' : 'Cluster idle & synchronized'}
+          </span>
+        </div>
+
+        <div className="qf-card" style={{ padding: '12px 14px', borderLeft: '3px solid #10b981' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>Completed Migrations</span>
+            <CheckCircle2 size={15} color="#10b981" />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: '4px 0 2px 0' }}>{completedMigrations.length}</h3>
+          <span style={{ fontSize: 10, color: '#10b981', fontWeight: 600 }}>Zero downtime verified</span>
+        </div>
+
+        <div className="qf-card" style={{ padding: '12px 14px', borderLeft: '3px solid #f59e0b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>Active Shards in Ring</span>
+            <Database size={15} color="#f59e0b" />
+          </div>
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: '4px 0 2px 0' }}>{platformStore.shards.length}</h3>
+          <span style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>Multi-region consistent hash</span>
+        </div>
+      </div>
+
       <GlobalTable<TenantMigrationJob>
         data={migrations}
         columns={columns}
@@ -183,6 +229,39 @@ export const MigrationsPage: React.FC<MigrationsPageProps> = () => {
         enableSearch={true}
         enablePagination={true}
         defaultItemsPerPage={10}
+        emptyStateMessage={
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '20px 0' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', backgroundColor: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4338ca' }}>
+              <ArrowLeftRight size={22} />
+            </div>
+            <div style={{ textAlign: 'center', maxWidth: 460 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', margin: '0 0 4px 0' }}>No Active Shard Migrations</h4>
+              <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 14px 0', lineHeight: 1.5 }}>
+                All tenant databases are currently balanced across active database shards. You can initiate a zero-downtime migration to rebalance cluster capacity at any time.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsMigrationModalOpen(true)}
+                style={{
+                  backgroundColor: '#4f46e5',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '8px 16px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <Plus size={14} /> Schedule First Migration
+              </button>
+            </div>
+          </div>
+        }
         headerActions={
           <button
             onClick={() => setIsMigrationModalOpen(true)}

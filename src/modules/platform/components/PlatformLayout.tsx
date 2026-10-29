@@ -170,8 +170,8 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
         width: '100vw',
         flex: 1,
         overflow: 'hidden',
-        backgroundColor: '#0b0f19',
-        color: '#f8fafc',
+        backgroundColor: '#f8fafc',
+        color: '#0f172a',
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
       }}
     >
@@ -190,7 +190,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
       />
 
       {/* Main Body with Sidebar + Content */}
-      <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0, height: 'calc(100vh - 54px)', overflow: 'hidden' }}>
         <PlatformSidebar activeTab={activeTab} onSelectTab={(t) => handleNavigate(t)} />
 
         <main
@@ -198,14 +198,21 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
             flex: 1,
             width: '100%',
             height: '100%',
+            minHeight: '100%',
             backgroundColor: '#f8fafc',
             color: '#0f172a',
-            padding: '6px 10px',
+            padding: '12px 16px 24px 16px',
             overflowY: 'auto',
-            minWidth: 0
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
-          <div key={activeTab} className="qf-page-transition">
+          <div
+            key={activeTab}
+            className="qf-page-transition"
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100%' }}
+          >
             {renderActivePage()}
           </div>
         </main>

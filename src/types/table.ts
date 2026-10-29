@@ -30,6 +30,6 @@ export interface GlobalTableProps<T> {
   onRowClick?: (row: T) => void;
   headerActions?: ReactNode;
   filterBar?: ReactNode;
-  emptyStateMessage?: string;
+  emptyStateMessage?: ReactNode;
   loading?: boolean;
 }

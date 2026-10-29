@@ -22,7 +22,8 @@ import {
   LayoutGrid,
   Table as TableIcon,
   SlidersHorizontal,
-  GripVertical
+  GripVertical,
+  Inbox
 } from 'lucide-react';
 import type { GlobalTableProps, TableColumn } from '../../types/table';
 import { TableExportToolbar } from './TableExportToolbar';
@@ -605,8 +606,24 @@ export function GlobalTable<T>({
                 </tr>
               ) : table.getRowModel().rows.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + 1} style={{ textAlign: 'center', padding: '24px 16px', color: '#64748b' }}>
-                    {emptyStateMessage}
+                  <td colSpan={columns.length + 1} style={{ textAlign: 'center', padding: '36px 20px', color: '#64748b' }}>
+                    {typeof emptyStateMessage === 'object' && emptyStateMessage !== null ? (
+                      emptyStateMessage
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                          <Inbox size={22} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>
+                            {emptyStateMessage || 'No records found'}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                            There are currently no matching items found in the system.
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
