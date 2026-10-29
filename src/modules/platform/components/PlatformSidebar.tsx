@@ -25,9 +25,9 @@ interface PlatformSidebarProps {
 }
 
 const COLLAPSED_WIDTH = 60;
-const MIN_EXPANDED_WIDTH = 190;
+const MIN_EXPANDED_WIDTH = 230;
 const MAX_EXPANDED_WIDTH = 380;
-const DEFAULT_EXPANDED_WIDTH = 215;
+const DEFAULT_EXPANDED_WIDTH = 250;
 
 export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
   activeTab,
@@ -54,7 +54,13 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('qf_platform_sidebar_width');
-      return saved ? Math.max(MIN_EXPANDED_WIDTH, Math.min(MAX_EXPANDED_WIDTH, parseInt(saved, 10))) : DEFAULT_EXPANDED_WIDTH;
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (parsed >= MIN_EXPANDED_WIDTH && parsed <= MAX_EXPANDED_WIDTH) {
+          return parsed;
+        }
+      }
+      return DEFAULT_EXPANDED_WIDTH;
     } catch {
       return DEFAULT_EXPANDED_WIDTH;
     }
@@ -241,7 +247,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
         userSelect: isDragging ? 'none' : 'auto'
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'visible' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         {/* Header Area */}
         {!isCollapsed ? (
           <div
@@ -343,13 +349,11 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
             display: 'flex',
             flexDirection: 'column',
             alignItems: isCollapsed ? 'center' : 'stretch',
-            gap: isCollapsed ? 4 : 4,
+            gap: 4,
             overflowY: 'auto',
             overflowX: 'hidden',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
             flex: 1,
-            padding: isCollapsed ? '2px 0' : '0 2px 0 0'
+            padding: isCollapsed ? '2px 0' : '0 4px 0 0'
           }}
         >
           {/* GSAP Sliding Indicator */}

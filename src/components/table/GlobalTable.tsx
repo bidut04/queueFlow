@@ -291,7 +291,7 @@ export function GlobalTable<T>({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden relative w-full flex flex-col max-h-[calc(100vh-175px)]">
+    <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden relative w-full flex flex-col">
       {/* Toast notification */}
       {toastMessage && (
         <div style={{
@@ -465,7 +465,7 @@ export function GlobalTable<T>({
 
       {/* Main Content Area: Table View vs. Grid Cards View */}
       {viewMode === 'table' ? (
-        <div className="qf-table-container">
+        <div className="qf-table-container" style={{ maxHeight: 'calc(100vh - 260px)', minHeight: '140px' }}>
           <table className={`qf-table qf-table-density-${densityMode}`}>
             <thead>
               {table.getHeaderGroups().map((headerGroup: HeaderGroup<T>) => (

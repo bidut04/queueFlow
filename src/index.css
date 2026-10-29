@@ -122,15 +122,23 @@ body {
   background: #94a3b8;
 }
 
-/* Hide Sidebar Nav Scrollbar completely */
+/* Elegant Sidebar Nav Scrollbar */
 .qf-sidebar-nav {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
 }
 .qf-sidebar-nav::-webkit-scrollbar {
-  display: none;
-  width: 0 !important;
-  height: 0 !important;
+  width: 4px;
+}
+.qf-sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.qf-sidebar-nav::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+.qf-sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 
 /* Smooth Page Fade Transition */
@@ -292,14 +300,27 @@ body {
   position: relative;
   flex: 1;
   min-height: 0;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
 }
 
 .qf-table-container::-webkit-scrollbar {
-  display: none;
-  width: 0 !important;
-  height: 0 !important;
+  width: 6px;
+  height: 6px;
+}
+
+.qf-table-container::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.qf-table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.qf-table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .qf-table {
