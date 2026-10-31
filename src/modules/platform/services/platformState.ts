@@ -73,8 +73,6 @@ class PlatformStore {
 
   constructor() {
     this.syncCurrentUser();
-    // Automatically trigger initial load from backend
-    this.loadFromBackend();
   }
 
   public subscribe(listener: () => void) {
@@ -106,6 +104,9 @@ class PlatformStore {
 
   // --- LIVE BACKEND DATA FETCHING ---
   public async loadFromBackend(): Promise<void> {
+    if (!authApi.isSuperAdmin()) {
+      return;
+    }
     try {
       this.isLoading = true;
       this.syncCurrentUser();

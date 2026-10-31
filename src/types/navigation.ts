@@ -2,6 +2,7 @@ export type NavPageId =
   | 'dashboard' 
   | 'branches' 
   | 'services' 
+  | 'categories'
   | 'employees'
   | 'users' 
   | 'bookings' 
@@ -11,6 +12,7 @@ export type NavPageId =
   | 'reports' 
   | 'settings'
   | 'roles'
+  | 'permissions'
   | 'departments'
   | 'employee-department-association'
   | 'login'
@@ -22,13 +24,13 @@ export type NavPageId =
   | 'queue-portal';
 
 export interface NavSubItem {
-  id: NavPageId;
+  id: NavPageId | string;
   label: string;
   iconName?: string;
 }
 
 export interface NavItem {
-  id: NavPageId | 'master' | 'association';
+  id: NavPageId | 'master' | 'association' | string;
   label: string;
   iconName: string;
   badgeCount?: number;

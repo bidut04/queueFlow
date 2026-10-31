@@ -32,4 +32,10 @@ export interface GlobalTableProps<T> {
   filterBar?: ReactNode;
   emptyStateMessage?: ReactNode;
   loading?: boolean;
+  exportPermissions?: {
+    copy?: boolean;
+    excel?: boolean;
+    print?: boolean;
+    pdf?: boolean;
+  };
 }

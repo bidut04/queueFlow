@@ -1,5 +1,7 @@
 import { api } from './client';
 import { INITIAL_ROLES, type RoleItem } from '../data/mockRoles';
+import type { ModulePermissionRow } from '../lib/permissions';
+import { getStoredPermissions } from '../lib/permissions';
 
 export interface CreateRoleInput {
   roleCode: string;
@@ -20,7 +22,7 @@ let localRoles: RoleItem[] = [...INITIAL_ROLES];
 export const roleApi = {
   getRoles: async (): Promise<RoleItem[]> => {
     try {
-      const response = await api.get<any>('/roles');
+      const response = await api.get<any>('/roles', { skipAuthRedirect: true });
       const rawList = Array.isArray(response) ? response : response?.data;
       if (Array.isArray(rawList)) {
         // Map backend roles if necessary, else return
@@ -150,5 +152,31 @@ export const roleApi = {
         'BOOKING_CREATE',
       ];
     }
+  },
+
+  getPermissionsMatrix: async (roleId?: string): Promise<ModulePermissionRow[]> => {
+    try {
+      const res = await api.get<any>('/roles/matrix', { params: { roleId } });
+      const data = res?.data || res;
+      if (Array.isArray(data) && data.length > 0) {
+        return data as ModulePermissionRow[];
+      }
+    } catch (err) {
+      console.warn('Failed to fetch permissions matrix from backend, falling back to local storage:', err);
+    }
+    return getStoredPermissions();
+  },
+
+  savePermissionsMatrix: async (modules: ModulePermissionRow[], roleId?: string): Promise<ModulePermissionRow[]> => {
+    try {
+      const res = await api.put<any>('/roles/matrix', { modules, roleId });
+      const data = res?.data || res;
+      if (Array.isArray(data) && data.length > 0) {
+        return data as ModulePermissionRow[];
+      }
+    } catch (err) {
+      console.warn('Failed to persist permissions matrix to backend, falling back to local storage:', err);
+    }
+    return modules;
   },
 };

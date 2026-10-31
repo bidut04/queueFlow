@@ -1,11 +1,16 @@
 import { PageSkeleton } from '../ui/PageSkeleton';
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import type { NavPageId } from '../../types/navigation';
 import { platformStore } from '../../modules/platform/services/platformState';
 import { TenantContextBanner } from '../../modules/platform/components/TenantContextBanner';
 import { authApi } from '../../api/auth.api';
+import {
+  canUserAccessPage,
+  PERMISSIONS_UPDATED_EVENT,
+} from '../../lib/permissions';
 
 // Route-based Dynamic Code-Splitting via React.lazy
 const DashboardPage = lazy(() => import('../../pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -13,6 +18,7 @@ const BookingsPage = lazy(() => import('../../pages/BookingsPage').then((m) => (
 const MasterBookingFormPage = lazy(() => import('../../pages/MasterBookingFormPage').then((m) => ({ default: m.MasterBookingFormPage })));
 const BranchesPage = lazy(() => import('../../pages/BranchesPage').then((m) => ({ default: m.BranchesPage })));
 const ServicesPage = lazy(() => import('../../pages/ServicesPage').then((m) => ({ default: m.ServicesPage })));
+const CategoriesPage = lazy(() => import('../../pages/CategoriesPage').then((m) => ({ default: m.CategoriesPage })));
 const EmployeesPage = lazy(() => import('../../pages/EmployeesPage').then((m) => ({ default: m.EmployeesPage })));
 const UsersPage = lazy(() => import('../../pages/UsersPage').then((m) => ({ default: m.UsersPage })));
 const TicketsPage = lazy(() => import('../../pages/TicketsPage').then((m) => ({ default: m.TicketsPage })));
@@ -23,6 +29,7 @@ const LoginPage = lazy(() => import('../../pages/LoginPage').then((m) => ({ defa
 const LoginFormPage = lazy(() => import('../../pages/LoginFormPage').then((m) => ({ default: m.LoginFormPage })));
 const FormBuilderPage = lazy(() => import('../../pages/FormBuilderPage').then((m) => ({ default: m.FormBuilderPage })));
 const RolesPage = lazy(() => import('../../pages/RolesPage').then((m) => ({ default: m.RolesPage })));
+const PermissionsMatrixPage = lazy(() => import('../../pages/PermissionsMatrixPage').then((m) => ({ default: m.PermissionsMatrixPage })));
 const DepartmentsPage = lazy(() => import('../../pages/DepartmentsPage').then((m) => ({ default: m.DepartmentsPage })));
 const EmployeeDepartmentAssociationPage = lazy(() => import('../../pages/EmployeeDepartmentAssociationPage').then((m) => ({ default: m.EmployeeDepartmentAssociationPage })));
 const PlatformLayout = lazy(() => import('../../modules/platform/components/PlatformLayout').then((m) => ({ default: m.PlatformLayout })));
@@ -89,6 +96,7 @@ export const AppLayout: React.FC = () => {
       'form-builder',
       'login-form',
       'roles',
+      'permissions',
       'departments',
       'employee-department-association',
       'branches',
@@ -109,9 +117,22 @@ export const AppLayout: React.FC = () => {
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => authApi.isAuthenticated());
   const [activePage, setActivePage] = useState<NavPageId>(getInitialPage);
-  const [activeTenantContext, setActiveTenantContext] = useState(platformStore.activeTenantContext);
+  const [activeTenantContext, setActiveTenantContext] = useState(() => authApi.isSuperAdmin() ? platformStore.activeTenantContext : null);
+  const [, setPermissionsVersion] = useState<number>(0);
+
+  // Subscribe to live permission grants and revocations
+  useEffect(() => {
+    const handlePermissionsUpdated = () => {
+      setPermissionsVersion((v) => v + 1);
+    };
+    window.addEventListener(PERMISSIONS_UPDATED_EVENT, handlePermissionsUpdated);
+    return () => {
+      window.removeEventListener(PERMISSIONS_UPDATED_EVENT, handlePermissionsUpdated);
+    };
+  }, []);
 
   useEffect(() => {
+    if (!authApi.isSuperAdmin()) return;
     return platformStore.subscribe(() => {
       setActiveTenantContext(platformStore.activeTenantContext);
     });
@@ -337,6 +358,40 @@ export const AppLayout: React.FC = () => {
   }
 
   const renderActivePage = () => {
+    // Access Control Guard: If an administrator has revoked viewing privileges for this page,
+    // block access and present the Access Revoked notification
+    if (!canUserAccessPage(activePage)) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[460px] p-8 text-center bg-white rounded-2xl border border-slate-200/90 shadow-xs max-w-lg mx-auto mt-12 animate-in fade-in">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mb-4 shadow-2xs">
+            <ShieldAlert size={32} />
+          </div>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 mb-2">
+            Access Revoked
+          </span>
+          <h2 className="text-[18px] font-extrabold text-slate-900 tracking-tight">
+            Module Revoked by Administrator
+          </h2>
+          <p className="text-xs text-slate-500 mt-2 max-w-md leading-relaxed">
+            An authorized administrator has revoked viewing and operational privileges for the{' '}
+            <strong className="text-slate-800 capitalize">{activePage.replace(/-/g, ' ')}</strong> module.
+            This item has been removed from your navigation bar and access is currently disabled.
+          </p>
+          <div className="mt-5 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 max-w-sm text-left">
+            <span className="font-bold text-slate-800 block mb-1">Need Access to this Module?</span>
+            Contact your verified Tenant Administrator to re-enable access privileges in the <strong>Permissions Matrix</strong>.
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSelectPage('dashboard')}
+            className="mt-6 px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+          >
+            <ArrowLeft size={13} /> Return to Dashboard
+          </button>
+        </div>
+      );
+    }
+
     switch (activePage) {
       case 'dashboard':
         return <DashboardPage onNavigate={(pageId) => handleSelectPage(pageId)} />;
@@ -359,7 +414,9 @@ export const AppLayout: React.FC = () => {
       case 'login-form':
         return <LoginFormPage />;
       case 'roles':
-        return <RolesPage />;
+        return <RolesPage onNavigate={(pageId) => handleSelectPage(pageId as NavPageId)} />;
+      case 'permissions':
+        return <PermissionsMatrixPage />;
       case 'departments':
         return <DepartmentsPage />;
       case 'employee-department-association':
@@ -368,6 +425,8 @@ export const AppLayout: React.FC = () => {
         return <BranchesPage />;
       case 'services':
         return <ServicesPage />;
+      case 'categories':
+        return <CategoriesPage />;
       case 'employees':
         return <EmployeesPage />;
       case 'users':

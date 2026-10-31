@@ -10,7 +10,8 @@ import {
   ChevronUp,
   KeyRound,
   Users,
-  ShieldAlert
+  ShieldAlert,
+  Lock
 } from 'lucide-react';
 import { GlobalTable } from '../components/table/GlobalTable';
 import { Badge } from '../components/ui/Badge';
@@ -24,7 +25,7 @@ import {
   useDeleteRole,
 } from '../api';
 
-export const RolesPage: React.FC = () => {
+export const RolesPage: React.FC<{ onNavigate?: (pageId: string) => void }> = ({ onNavigate }) => {
   const { data: roles = [] } = useRoles();
   const createRoleMutation = useCreateRole();
   const updateRoleMutation = useUpdateRole();
@@ -268,6 +269,15 @@ export const RolesPage: React.FC = () => {
         >
           {showRoleForm ? 'Hide Form' : 'Create Role'}
         </Button>
+        {onNavigate && (
+          <button
+            type="button"
+            onClick={() => onNavigate("permissions")}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-[11.5px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
+          >
+            <Lock size={13} /> Permissions Matrix &rarr;
+          </button>
+        )}
       </div>
 
       {/* Inline Add / Edit Role Card */}

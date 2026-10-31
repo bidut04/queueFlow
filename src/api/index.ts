@@ -10,6 +10,7 @@ export * from './platform.api';
 export * from './branch.api';
 export * from './department.api';
 export * from './service.api';
+export * from './category.api';
 export * from './role.api';
 export * from './association.api';
 export * from './form.api';

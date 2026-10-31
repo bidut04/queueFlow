@@ -1,17 +1,32 @@
-import React, { useState } from 'react';
-import { Save, Bell, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, Bell, Globe, User, Edit } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { authApi } from '../api/auth.api';
+import { UserProfileModal } from '../components/profile/UserProfileModal';
 
 export const SettingsPage: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState(authApi.getCurrentUser());
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [systemName, setSystemName] = useState<string>('QueueFlow Enterprise');
   const [supportEmail, setSupportEmail] = useState<string>('support@queflow.io');
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [smsNotifications, setSmsNotifications] = useState<boolean>(true);
 
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      setCurrentUser(e.detail || authApi.getCurrentUser());
+    };
+    window.addEventListener('auth:profile-updated', handleUpdate);
+    return () => window.removeEventListener('auth:profile-updated', handleUpdate);
+  }, []);
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     alert('System settings updated successfully!');
   };
+
+  const displayName = currentUser?.name || currentUser?.email?.split('@')[0] || 'Admin';
+  const displayAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -23,6 +38,47 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 720 }}>
+        {/* Personal Profile Section */}
+        <div className="qf-card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+              <User size={18} color="#2563eb" /> Personal Profile & Identity
+            </h3>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsProfileModalOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Edit size={13} /> Edit Profile & Avatar
+            </Button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #f1f5f9' }}>
+            <img
+              src={displayAvatar}
+              alt={displayName}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '2px solid #ffffff',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+              }}
+            />
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                {displayName}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>
+                {currentUser?.email || 'user@example.com'} • <strong style={{ color: '#2563eb' }}>{currentUser?.role || 'Admin'}</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="qf-card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Globe size={18} color="#2563eb" /> General Configuration
@@ -105,6 +161,14 @@ export const SettingsPage: React.FC = () => {
           </Button>
         </div>
       </form>
+
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onProfileUpdated={(updated) => {
+          setCurrentUser(updated);
+        }}
+      />
     </div>
   );
 };

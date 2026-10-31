@@ -70,6 +70,12 @@ export const serviceKeys = {
   detail: (id: string) => [...serviceKeys.all, 'detail', id] as const,
 };
 
+export const categoryKeys = {
+  all: ['categories'] as const,
+  lists: () => [...categoryKeys.all, 'list'] as const,
+  detail: (id: string) => [...categoryKeys.all, 'detail', id] as const,
+};
+
 export const roleKeys = {
   all: ['roles'] as const,
   lists: () => [...roleKeys.all, 'list'] as const,

@@ -16,81 +16,61 @@ export interface UpdateBranchInput extends Partial<CreateBranchInput> {
   id: string;
 }
 
-// In-memory fallback cache so master branch mutations persist seamlessly
-let localBranches: Branch[] = [];
+const mapLocationToBranch = (b: any): Branch => ({
+  id: b.id,
+  name: b.name || '',
+  location: typeof b.address === 'object' && b.address
+    ? `${b.address.city || ''}, ${b.address.state || ''}`.replace(/^,\s*|,\s*$/g, '').trim() || b.name
+    : (b.location || b.name || ''),
+  manager: b.manager || 'Branch Manager',
+  contactNumber: b.phone || b.contactNumber || '',
+  activeCounters: b.activeCounters ?? (b.counters?.length || 0),
+  rating: b.rating ?? 5.0,
+  avgWaitTime: b.avgWaitTime ?? '0m',
+  status: (b.status === 'ACTIVE' || b.status === 'Active' ? 'Active' : (b.status || 'Active')) as Branch['status'],
+  todayTotalBookings: b.todayTotalBookings ?? (b.queueEntries?.length || 0),
+});
 
 export const branchApi = {
   getBranches: async (): Promise<Branch[]> => {
-    try {
-      const result = await api.get<Branch[]>('/branches');
-      if (Array.isArray(result)) {
-        return result;
-      }
-      return localBranches;
-    } catch {
-      return localBranches;
+    const result = await api.get<any>('/branches', { skipAuthRedirect: true });
+    const list = Array.isArray(result) ? result : result?.data;
+    if (Array.isArray(list)) {
+      return list.map(mapLocationToBranch);
     }
+    return [];
   },
 
   getBranchById: async (id: string): Promise<Branch> => {
-    try {
-      return await api.get<Branch>(`/branches/${id}`);
-    } catch {
-      const found = localBranches.find((b) => b.id === id);
-      if (!found) throw new Error(`Branch ${id} not found`);
-      return found;
-    }
+    const res = await api.get<any>(`/branches/${id}`, { skipAuthRedirect: true });
+    const b = res?.data || res;
+    return mapLocationToBranch(b);
   },
 
   createBranch: async (input: CreateBranchInput): Promise<Branch> => {
-    try {
-      const created = await api.post<Branch>('/branches', input);
-      localBranches = [created, ...localBranches];
-      return created;
-    } catch {
-      const newBranch: Branch = {
-        id: `branch-${Date.now()}`,
-        name: input.name,
-        location: input.location,
-        manager: input.manager,
-        contactNumber: input.contactNumber,
-        activeCounters: input.activeCounters ?? 4,
-        rating: input.rating ?? 4.5,
-        avgWaitTime: input.avgWaitTime ?? '15 min',
-        status: input.status ?? 'On Time',
-        todayTotalBookings: 0,
-      };
-      localBranches = [newBranch, ...localBranches];
-      return newBranch;
-    }
+    const res = await api.post<any>('/branches', {
+      name: input.name,
+      phone: input.contactNumber,
+      address: { city: input.location },
+      manager: input.manager,
+    }, { skipAuthRedirect: true });
+    const created = res?.data || res;
+    return mapLocationToBranch(created);
   },
 
   updateBranch: async ({ id, ...input }: UpdateBranchInput): Promise<Branch> => {
-    try {
-      const updated = await api.patch<Branch>(`/branches/${id}`, input);
-      localBranches = localBranches.map((b) => (b.id === id ? { ...b, ...updated } : b));
-      return updated;
-    } catch {
-      let updatedBranch: Branch | null = null;
-      localBranches = localBranches.map((b) => {
-        if (b.id === id) {
-          updatedBranch = { ...b, ...input };
-          return updatedBranch;
-        }
-        return b;
-      });
-      if (!updatedBranch) throw new Error(`Branch ${id} not found`);
-      return updatedBranch;
-    }
+    const res = await api.patch<any>(`/branches/${id}`, {
+      name: input.name,
+      phone: input.contactNumber,
+      ...(input.location ? { address: { city: input.location } } : {}),
+      manager: input.manager,
+    }, { skipAuthRedirect: true });
+    const updated = res?.data || res;
+    return mapLocationToBranch(updated);
   },
 
   deleteBranch: async (id: string): Promise<{ success: boolean; id: string }> => {
-    try {
-      await api.delete(`/branches/${id}`);
-    } catch {
-      // Continue for local state
-    }
-    localBranches = localBranches.filter((b) => b.id !== id);
+    await api.delete(`/branches/${id}`, { skipAuthRedirect: true });
     return { success: true, id };
   },
 };

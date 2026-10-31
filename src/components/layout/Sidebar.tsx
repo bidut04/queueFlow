@@ -23,15 +23,26 @@ import {
   ShieldCheck,
   Building2,
   GitMerge,
-  PanelLeftClose
+  PanelLeftClose,
+  ClipboardCheck,
+  CreditCard,
+  Activity,
+  Database,
+  ArrowLeftRight
 } from 'lucide-react';
 import type { NavPageId, NavItem } from '../../types/navigation';
 import { Tooltip } from '../ui/tooltip';
 import { ResizableHandle } from '../ui/resizable';
+import {
+  canUserAccessPage,
+  isAuthorizedDecider,
+  PERMISSIONS_UPDATED_EVENT,
+} from '../../lib/permissions';
 
 export interface SidebarProps {
-  activePage: NavPageId;
-  onSelectPage: (pageId: NavPageId) => void;
+  activePage: string;
+  onSelectPage: (pageId: any) => void;
+  items?: NavItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -52,8 +63,10 @@ const NAV_ITEMS: NavItem[] = [
       { id: 'org-portal', label: 'Org Admin Portal', iconName: 'org-portal' },
       { id: 'login-form', label: 'Login Form', iconName: 'login-form' },
       { id: 'roles', label: 'Role', iconName: 'roles' },
+      { id: 'permissions', label: 'Permissions Matrix', iconName: 'permissions' },
       { id: 'departments', label: 'Department', iconName: 'departments' },
       { id: 'branches', label: 'Branch', iconName: 'branches' },
+      { id: 'categories', label: 'Category', iconName: 'categories' },
       { id: 'services', label: 'Service', iconName: 'services' },
       { id: 'employees', label: 'Employee', iconName: 'employees' }
     ]
@@ -70,11 +83,67 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const COLLAPSED_WIDTH = 54;
-const MIN_EXPANDED_WIDTH = 190;
+const MIN_EXPANDED_WIDTH = 250;
 const MAX_EXPANDED_WIDTH = 380;
-const DEFAULT_EXPANDED_WIDTH = 220;
+const DEFAULT_EXPANDED_WIDTH = 265;
 
-export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage, items }) => {
+  const baseList = items || NAV_ITEMS;
+  const [permissionsVersion, setPermissionsVersion] = useState<number>(0);
+
+  // Subscribe to live permission grants/revocations
+  useEffect(() => {
+    const handlePermissionsUpdated = () => {
+      setPermissionsVersion((v) => v + 1);
+    };
+    window.addEventListener(PERMISSIONS_UPDATED_EVENT, handlePermissionsUpdated);
+    window.addEventListener('auth:login', handlePermissionsUpdated);
+    return () => {
+      window.removeEventListener(PERMISSIONS_UPDATED_EVENT, handlePermissionsUpdated);
+      window.removeEventListener('auth:login', handlePermissionsUpdated);
+    };
+  }, []);
+
+  // Dynamically filter navigation items based on authorized grants & decider role
+  const navList = React.useMemo(() => {
+    const isAuthorized = isAuthorizedDecider();
+
+    return baseList
+      .map((item) => {
+        // If item is 'permissions', only authorized deciders can see it
+        if (item.id === 'permissions' && !isAuthorized) {
+          return null;
+        }
+
+        // Handle nested sub-menus (Master, Association)
+        if (item.subItems) {
+          const allowedSubItems = item.subItems.filter((sub) => {
+            if (sub.id === 'permissions') {
+              return isAuthorized && canUserAccessPage('permissions');
+            }
+            return canUserAccessPage(sub.id);
+          });
+
+          // If all subItems were revoked, hide the entire parent category
+          if (allowedSubItems.length === 0) {
+            return null;
+          }
+
+          return {
+            ...item,
+            subItems: allowedSubItems,
+          };
+        }
+
+        // Top-level item: check whether its read/view power has been revoked
+        if (!canUserAccessPage(item.id)) {
+          return null;
+        }
+
+        return item;
+      })
+      .filter(Boolean) as NavItem[];
+  }, [baseList, permissionsVersion]);
   // Read persisted sidebar state
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     try {
@@ -87,7 +156,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('qf_sidebar_width');
-      return saved ? Math.max(MIN_EXPANDED_WIDTH, Math.min(MAX_EXPANDED_WIDTH, parseInt(saved, 10))) : DEFAULT_EXPANDED_WIDTH;
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (parsed >= 250 && parsed <= MAX_EXPANDED_WIDTH) {
+          return parsed;
+        }
+      }
+      return DEFAULT_EXPANDED_WIDTH;
     } catch {
       return DEFAULT_EXPANDED_WIDTH;
     }
@@ -292,16 +367,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
     if (!navRef.current || !activePillRef.current) return;
 
     // Check if active page is a top-level nav item
-    const isTopLevel = NAV_ITEMS.some((item) => item.id === activePage);
+    const isTopLevel = navList.some((item) => item.id === activePage);
 
     let targetEl: HTMLElement | null = null;
     if (isTopLevel) {
       targetEl = navRef.current.querySelector<HTMLElement>(`[data-nav-id="${activePage}"]`);
     } else if (isCollapsed) {
       // In collapsed mode, highlight the parent dock icon
-      if (NAV_ITEMS.find((n) => n.id === 'master')?.subItems?.some((s) => s.id === activePage)) {
+      if (navList.find((n) => n.id === 'master')?.subItems?.some((s) => s.id === activePage)) {
         targetEl = navRef.current.querySelector<HTMLElement>(`[data-nav-id="master"]`);
-      } else if (NAV_ITEMS.find((n) => n.id === 'association')?.subItems?.some((s) => s.id === activePage)) {
+      } else if (navList.find((n) => n.id === 'association')?.subItems?.some((s) => s.id === activePage)) {
         targetEl = navRef.current.querySelector<HTMLElement>(`[data-nav-id="association"]`);
       }
     }
@@ -390,6 +465,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
 
   const getNavIcon = (iconName: string, size = 16) => {
     switch (iconName) {
+      case 'overview':
+        return <LayoutDashboard size={size} />;
+      case 'organizations':
+        return <Building2 size={size} />;
+      case 'approvals':
+        return <ClipboardCheck size={size} />;
+      case 'subscriptions':
+        return <CreditCard size={size} />;
+      case 'system-health':
+        return <Activity size={size} />;
+      case 'shards':
+        return <Database size={size} />;
+      case 'migrations':
+        return <ArrowLeftRight size={size} />;
+      case 'audit':
+        return <ShieldCheck size={size} />;
       case 'platform':
         return <ShieldCheck size={size} color="#818cf8" />;
       case 'dashboard':
@@ -405,12 +496,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
         return <Wrench size={size} />;
       case 'roles':
         return <ShieldCheck size={size} />;
+      case 'permissions':
+        return <Lock size={size} color="#6366f1" />;
       case 'departments':
         return <Building2 size={size} />;
       case 'branches':
         return <GitBranch size={size} />;
       case 'services':
         return <Briefcase size={size} />;
+      case 'categories':
+        return <Layers3 size={size} color="#8b5cf6" />;
       case 'employees':
         return <UserCheck size={size} />;
       case 'users':
@@ -625,7 +720,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
             style={{ opacity: 0 }}
           />
 
-          {NAV_ITEMS.filter((item) => (isCollapsed ? item.id !== 'settings' : true)).map((item) => {
+          {navList.filter((item) => (isCollapsed ? item.id !== 'settings' : true)).map((item) => {
             const hasSub = !!item.subItems;
             const isChildActive = hasSub && item.subItems?.some((sub) => sub.id === activePage);
             const isActive = activePage === item.id || isChildActive;
@@ -678,6 +773,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
                       <span className="qf-nav-icon" style={{ display: 'inline-flex' }}>
                         {getNavIcon(item.iconName, 16)}
                       </span>
+                      {item.badgeCount && item.badgeCount > 0 ? (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 4,
+                            right: 4,
+                            width: 7,
+                            height: 7,
+                            borderRadius: '50%',
+                            backgroundColor: '#2563eb',
+                            border: '1.5px solid #0f172a'
+                          }}
+                        />
+                      ) : null}
                     </button>
                   </Tooltip>
 
@@ -1000,6 +1109,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage }) =>
                 <span className="qf-nav-label" style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {item.label}
                 </span>
+                {item.badgeCount && item.badgeCount > 0 ? (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      backgroundColor: '#2563eb',
+                      color: '#ffffff',
+                      padding: '2px 6px',
+                      borderRadius: 10,
+                      lineHeight: 1
+                    }}
+                  >
+                    {item.badgeCount}
+                  </span>
+                ) : null}
               </button>
             );
           })}

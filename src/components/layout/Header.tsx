@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, Calendar, ChevronDown, PanelLeft, LogOut, Shield, Settings, Building2 } from 'lucide-react';
+import { Search, Bell, PanelLeft, LogOut, Shield, Settings, Building2, ChevronDown, UserCircle } from 'lucide-react';
 import { Tooltip } from '../ui/tooltip';
 import { authApi } from '../../api/auth.api';
 import { orgAdminAuthStore } from '../../modules/platform/services/orgAdminAuthStore';
 import { LiveSocketIndicator } from '../ui/LiveSocketIndicator';
+import { DatePickerDropdown } from '../ui/DatePickerDropdown';
+import { UserProfileModal } from '../profile/UserProfileModal';
 
 export interface HeaderProps {
   userName?: string;
   userRole?: string;
   userAvatar?: string;
   currentDateText?: string;
+  selectedDate?: Date;
+  onDateChange?: (date: Date) => void;
   onNavigate?: (pageId: string) => void;
 }
 
@@ -17,14 +21,26 @@ export const Header: React.FC<HeaderProps> = ({
   userName = 'Rahul Admin',
   userRole = 'Tenant Admin',
   userAvatar = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-  currentDateText = 'Tue, Apr 23, 2025',
+  selectedDate: propSelectedDate,
+  onDateChange,
   onNavigate,
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(propSelectedDate || new Date());
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentUser = authApi.getCurrentUser();
+  const [profileState, setProfileState] = useState<any>(authApi.getCurrentUser());
+  const currentUser = profileState || authApi.getCurrentUser();
   const orgAdminUser = orgAdminAuthStore.currentUser;
+
+  useEffect(() => {
+    const handleProfileUpdate = (e: any) => {
+      setProfileState(e.detail || authApi.getCurrentUser());
+    };
+    window.addEventListener('auth:profile-updated', handleProfileUpdate);
+    return () => window.removeEventListener('auth:profile-updated', handleProfileUpdate);
+  }, []);
 
   const isSuper = Boolean(
     currentUser?.isSuperAdmin ||
@@ -32,11 +48,12 @@ export const Header: React.FC<HeaderProps> = ({
   );
 
   const displayName = isSuper
-    ? 'Super Admin'
-    : orgAdminUser?.name || currentUser?.email?.split('@')[0] || userName;
+    ? (currentUser?.name || 'Super Admin')
+    : currentUser?.name || orgAdminUser?.name || currentUser?.email?.split('@')[0] || userName;
 
   const displayEmail = currentUser?.email || orgAdminUser?.email || 'admin@gmail.com';
   const displayRole = isSuper ? 'Platform Owner' : (currentUser?.role || userRole);
+  const effectiveAvatar = currentUser?.avatar || userAvatar;
 
   // Close dropdown on outside click or escape key
   useEffect(() => {
@@ -163,26 +180,17 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Realtime WebSocket Connection Indicator */}
         <LiveSocketIndicator />
 
-        {/* Date Selector Pill */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '5px 10px',
-            backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#334155',
-            cursor: 'pointer',
+        {/* Interactive Topbar Date Picker Dropdown */}
+        <DatePickerDropdown
+          value={selectedDate}
+          onChange={(newDate) => {
+            setSelectedDate(newDate);
+            if (onDateChange) {
+              onDateChange(newDate);
+            }
           }}
-        >
-          <Calendar size={13} color="#64748b" />
-          <span>{currentDateText}</span>
-          <ChevronDown size={12} color="#94a3b8" />
-        </div>
+          align="right"
+        />
 
         {/* Notification Bell with Badge */}
         <div
@@ -241,7 +249,7 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             <img
-              src={userAvatar}
+              src={effectiveAvatar}
               alt={displayName}
               style={{
                 width: 30,
@@ -345,6 +353,35 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Navigation Options */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    setIsProfileModalOpen(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '8px 10px',
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #dbeafe',
+                    borderRadius: 6,
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    color: '#1d4ed8',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease',
+                    marginBottom: 4,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#dbeafe')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#eff6ff')}
+                >
+                  <UserCircle size={15} color="#2563eb" />
+                  <span>Edit Profile & Avatar</span>
+                </button>
+
                 {isSuper && (
                   <button
                     onClick={() => handleNavigateTo('platform')}
@@ -436,6 +473,14 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onProfileUpdated={(updated) => {
+          setProfileState(updated);
+        }}
+      />
     </header>
   );
 };

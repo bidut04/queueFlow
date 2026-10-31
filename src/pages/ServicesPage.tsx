@@ -18,6 +18,7 @@ import type { TableColumn } from '../types/table';
 import type { Service } from '../types/service';
 import {
   useServices,
+  useCategories,
   useCreateService,
   useUpdateService,
   useDeleteService,
@@ -73,6 +74,7 @@ const filterConfigs: FilterConfigOption[] = [
 
 export const ServicesPage: React.FC = () => {
   const { data: services = [] } = useServices();
+  const { data: categories = [] } = useCategories();
   const createServiceMutation = useCreateService();
   const updateServiceMutation = useUpdateService();
   const deleteServiceMutation = useDeleteService();
@@ -362,12 +364,21 @@ export const ServicesPage: React.FC = () => {
                 onChange={(e) => setServiceForm({ ...serviceForm, category: e.target.value })}
                 style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12, outline: 'none', backgroundColor: '#ffffff' }}
               >
-                <option value="Medical">Medical</option>
-                <option value="Diagnostics">Diagnostics</option>
-                <option value="Account & Identity">Account & Identity</option>
-                <option value="Banking & Cash">Banking & Cash</option>
-                <option value="Specialist">Specialist</option>
-                <option value="Therapy">Therapy</option>
+                {categories.length > 0 ? (
+                  categories.map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="General">General</option>
+                    <option value="Consultation">Consultation</option>
+                    <option value="Medical">Medical</option>
+                    <option value="Billing">Billing</option>
+                    <option value="VIP">VIP</option>
+                  </>
+                )}
               </select>
             </div>
 

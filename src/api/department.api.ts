@@ -15,80 +15,33 @@ export interface UpdateDepartmentInput extends Partial<CreateDepartmentInput> {
   id: string;
 }
 
-// In-memory fallback cache for departments
-let localDepartments: DepartmentItem[] = [];
-
 export const departmentApi = {
   getDepartments: async (): Promise<DepartmentItem[]> => {
-    try {
-      const result = await api.get<DepartmentItem[]>('/departments');
-      if (Array.isArray(result)) {
-        return result;
-      }
-      return localDepartments;
-    } catch {
-      return localDepartments;
+    const result = await api.get<any>('/departments', { skipAuthRedirect: true });
+    const list = Array.isArray(result) ? result : result?.data;
+    if (Array.isArray(list)) {
+      return list;
     }
+    return [];
   },
 
   getDepartmentById: async (id: string): Promise<DepartmentItem> => {
-    try {
-      return await api.get<DepartmentItem>(`/departments/${id}`);
-    } catch {
-      const found = localDepartments.find((d) => d.id === id);
-      if (!found) throw new Error(`Department ${id} not found`);
-      return found;
-    }
+    const res = await api.get<any>(`/departments/${id}`, { skipAuthRedirect: true });
+    return res?.data || res;
   },
 
   createDepartment: async (input: CreateDepartmentInput): Promise<DepartmentItem> => {
-    try {
-      const created = await api.post<DepartmentItem>('/departments', input);
-      localDepartments = [created, ...localDepartments];
-      return created;
-    } catch {
-      const newDept: DepartmentItem = {
-        id: `dept-${Date.now()}`,
-        deptCode: input.deptCode || `DEP-${Math.floor(100 + Math.random() * 900)}`,
-        deptName: input.deptName,
-        headOfDept: input.headOfDept,
-        branch: input.branch,
-        totalStaff: input.totalStaff ?? 5,
-        activeCounters: input.activeCounters ?? 2,
-        status: input.status ?? 'Active',
-        createdDate: new Date().toISOString().split('T')[0],
-      };
-      localDepartments = [newDept, ...localDepartments];
-      return newDept;
-    }
+    const res = await api.post<any>('/departments', input, { skipAuthRedirect: true });
+    return res?.data || res;
   },
 
   updateDepartment: async ({ id, ...input }: UpdateDepartmentInput): Promise<DepartmentItem> => {
-    try {
-      const updated = await api.patch<DepartmentItem>(`/departments/${id}`, input);
-      localDepartments = localDepartments.map((d) => (d.id === id ? { ...d, ...updated } : d));
-      return updated;
-    } catch {
-      let updatedDept: DepartmentItem | null = null;
-      localDepartments = localDepartments.map((d) => {
-        if (d.id === id) {
-          updatedDept = { ...d, ...input };
-          return updatedDept;
-        }
-        return d;
-      });
-      if (!updatedDept) throw new Error(`Department ${id} not found`);
-      return updatedDept;
-    }
+    const res = await api.patch<any>(`/departments/${id}`, input, { skipAuthRedirect: true });
+    return res?.data || res;
   },
 
   deleteDepartment: async (id: string): Promise<{ success: boolean; id: string }> => {
-    try {
-      await api.delete(`/departments/${id}`);
-    } catch {
-      // Continue for local state
-    }
-    localDepartments = localDepartments.filter((d) => d.id !== id);
+    await api.delete(`/departments/${id}`, { skipAuthRedirect: true });
     return { success: true, id };
   },
 };

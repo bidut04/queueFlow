@@ -12,7 +12,10 @@ import {
   Settings,
   ClipboardCheck,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Layers3,
+  HelpCircle,
+  ArrowRight
 } from 'lucide-react';
 import type { PlatformPageId } from '../types/platform';
 import { platformStore } from '../services/platformState';
@@ -112,10 +115,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
       isInitialMount.current = false;
       gsap.set(asideRef.current, {
         width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
-        margin: '0px',
-        borderRadius: 0,
-        height: '100%',
-        padding: isCollapsed ? '10px 0 12px 0' : '10px 8px'
+        padding: isCollapsed ? '12px 4px 10px 4px' : '14px 10px'
       });
       return;
     }
@@ -123,10 +123,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
     const aside = asideRef.current;
     gsap.to(aside, {
       width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
-      margin: '0px',
-      borderRadius: 0,
-      height: '100%',
-      padding: isCollapsed ? '10px 0 12px 0' : '10px 8px',
+      padding: isCollapsed ? '12px 4px 10px 4px' : '14px 10px',
       duration: 0.28,
       ease: 'power3.inOut'
     });
@@ -232,58 +229,71 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
         width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
         minWidth: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
         maxWidth: MAX_EXPANDED_WIDTH,
-        backgroundColor: '#090d16',
+        backgroundColor: '#0f172a',
         borderRight: '1px solid #1e293b',
         borderRadius: 0,
         boxShadow: 'none',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        padding: isCollapsed ? '10px 0 12px 0' : '10px 8px',
-        margin: '0px',
+        padding: isCollapsed ? '12px 4px 10px 4px' : '14px 10px',
+        margin: 0,
         flexShrink: 0,
         height: '100%',
+        minHeight: '100%',
+        maxHeight: '100%',
+        alignSelf: 'stretch',
         position: 'relative',
         userSelect: isDragging ? 'none' : 'auto'
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        {/* Header Area */}
+        {/* Header Area: Matches Tenant Admin Sidebar */}
         {!isCollapsed ? (
           <div
             style={{
-              padding: '2px 8px 8px 8px',
-              marginBottom: 6,
-              borderBottom: '1px solid #1e293b',
-              flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              padding: '2px 6px 14px 6px',
+              borderBottom: '1px solid #1e293b',
+              marginBottom: 8,
+              flexShrink: 0
             }}
           >
-            <p
-              style={{
-                fontSize: 10,
-                fontWeight: 800,
-                color: '#64748b',
-                letterSpacing: '0.8px',
-                textTransform: 'uppercase',
-                margin: 0
-              }}
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+              onClick={() => onSelectTab('overview')}
             >
-              Platform Control Plane
-            </p>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  backgroundColor: '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 3px 8px rgba(37, 99, 235, 0.4)'
+                }}
+              >
+                <Layers3 size={16} color="#ffffff" />
+              </div>
+              <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
+                QueueFlow
+              </span>
+            </div>
 
             <Tooltip content="Collapse sidebar (Ctrl+B)" side="bottom">
               <button
                 onClick={() => setIsCollapsed(true)}
                 aria-label="Collapse sidebar"
                 style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 4,
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
                   border: 'none',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
                   color: '#94a3b8',
                   display: 'flex',
                   alignItems: 'center',
@@ -296,11 +306,11 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                   e.currentTarget.style.color = '#ffffff';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
                   e.currentTarget.style.color = '#94a3b8';
                 }}
               >
-                <PanelLeftClose size={13} />
+                <PanelLeftClose size={15} />
               </button>
             </Tooltip>
           </div>
@@ -356,13 +366,13 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
             padding: isCollapsed ? '2px 0' : '0 4px 0 0'
           }}
         >
-          {/* GSAP Sliding Indicator */}
+          {/* GSAP Sliding Indicator: Matches Tenant Admin Brand Blue */}
           <div
             ref={activePillRef}
             className={`qf-nav-sliding-pill ${isCollapsed ? 'collapsed' : ''}`}
             style={{
-              backgroundColor: '#4f46e5',
-              boxShadow: '0 2px 10px rgba(79, 70, 229, 0.45)',
+              backgroundColor: '#2563eb',
+              boxShadow: '0 2px 10px rgba(37, 99, 235, 0.45)',
               opacity: 0
             }}
           />
@@ -400,18 +410,18 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                         if (!isActive) e.currentTarget.style.color = '#94a3b8';
                       }}
                     >
-                      <Icon size={17} color={isActive ? '#ffffff' : '#94a3b8'} />
+                      <Icon size={17} />
                       {item.badge && item.badge > 0 ? (
                         <span
                           style={{
                             position: 'absolute',
-                            top: 5,
-                            right: 5,
-                            width: 8,
-                            height: 8,
+                            top: 4,
+                            right: 4,
+                            width: 7,
+                            height: 7,
                             borderRadius: '50%',
-                            backgroundColor: '#f59e0b',
-                            border: '1.5px solid #090d16'
+                            backgroundColor: '#2563eb',
+                            border: '1.5px solid #0f172a'
                           }}
                         />
                       ) : null}
@@ -431,7 +441,7 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   width: '100%',
-                  padding: '7px 10px',
+                  padding: '8px 10px',
                   borderRadius: 6,
                   border: 'none',
                   backgroundColor: 'transparent',
@@ -450,23 +460,21 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
                   if (!isActive) e.currentTarget.style.color = '#94a3b8';
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <Icon size={16} color={isActive ? '#818cf8' : '#64748b'} style={{ flexShrink: 0 }} />
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.label}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon size={16} />
+                  <span>{item.label}</span>
                 </div>
+
                 {item.badge && item.badge > 0 ? (
                   <span
                     style={{
                       fontSize: 10,
-                      fontWeight: 800,
-                      backgroundColor: '#f59e0b',
+                      fontWeight: 700,
+                      backgroundColor: '#2563eb',
                       color: '#ffffff',
+                      padding: '2px 6px',
                       borderRadius: 10,
-                      padding: '1px 6px',
-                      lineHeight: '14px',
-                      flexShrink: 0
+                      lineHeight: 1
                     }}
                   >
                     {item.badge}
@@ -478,25 +486,59 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
         </nav>
       </div>
 
-      {/* Footer Section */}
+      {/* Footer Section: Matches Tenant Admin Sidebar Support Card */}
       {!isCollapsed ? (
         <div
           style={{
-            padding: 8,
-            borderRadius: 6,
-            backgroundColor: '#111827',
-            border: '1px solid #1f2937',
-            marginTop: 8,
+            backgroundColor: '#1e293b',
+            borderRadius: 10,
+            padding: '10px 12px',
+            border: '1px solid #334155',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 12,
             flexShrink: 0
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#f3f4f6' }}>Shard Ring</span>
-            <span style={{ fontSize: 9.5, color: '#34d399', fontWeight: 800 }}>5 Shards</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+            <div
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                backgroundColor: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <HelpCircle size={13} color="#ffffff" />
+            </div>
+            <div style={{ overflow: 'hidden' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', whiteSpace: 'nowrap', margin: 0 }}>
+                Need Help?
+              </p>
+              <p style={{ fontSize: 9.5, color: '#94a3b8', whiteSpace: 'nowrap', margin: 0 }}>
+                Contact Support
+              </p>
+            </div>
           </div>
-          <p style={{ fontSize: 9.5, color: '#9ca3af', margin: 0 }}>
-            Consistent-hashing router.
-          </p>
+
+          <button
+            onClick={() => alert('Contacting QueueFlow Support: help@queflow.io')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              padding: 2,
+              display: 'inline-flex'
+            }}
+          >
+            <ArrowRight size={12} />
+          </button>
         </div>
       ) : (
         <div
@@ -504,54 +546,86 @@ export const PlatformSidebar: React.FC<PlatformSidebarProps> = ({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 6,
+            gap: 7,
             width: '100%',
-            paddingTop: 8,
+            paddingTop: 6,
             borderTop: '1px solid #1e293b',
             flexShrink: 0
           }}
         >
-          <Tooltip content="Super Admin • Platform Owner" side="right">
-            <div
-              onClick={() => onSelectTab('settings')}
+          <Tooltip content="Need Help? Contact Support" side="right">
+            <button
+              onClick={() => alert('Support: help@queflow.io')}
+              aria-label="Contact Support"
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                overflow: 'hidden',
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: '#94a3b8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
-                border: activeTab === 'settings' ? '2px solid #6366f1' : '2px solid #334155',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.4)',
-                transition: 'transform 0.15s ease, border-color 0.15s ease',
-                position: 'relative'
+                transition: 'all 0.15s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.08)';
+                e.currentTarget.style.backgroundColor = '#1e293b';
+                e.currentTarget.style.color = '#ffffff';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#94a3b8';
               }}
             >
-              <img
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
-                alt="Platform Admin"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-              />
-            </div>
+              <HelpCircle size={16} />
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Settings" side="right">
+            <button
+              data-nav-id="settings"
+              onClick={() => onSelectTab('settings')}
+              aria-label="Settings"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                border: 'none',
+                backgroundColor: activeTab === 'settings' ? '#2563eb' : 'transparent',
+                color: activeTab === 'settings' ? '#ffffff' : '#94a3b8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== 'settings') {
+                  e.currentTarget.style.backgroundColor = '#1e293b';
+                  e.currentTarget.style.color = '#ffffff';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== 'settings') {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#94a3b8';
+                }
+              }}
+            >
+              <Settings size={16} />
+            </button>
           </Tooltip>
         </div>
       )}
 
-      {/* Draggable Resizable Handle (shadcn UI style) */}
+      {/* Draggable Resizable Handle */}
       <ResizableHandle
         onMouseDown={handleStartResize}
         onDoubleClick={handleDoubleClickRail}
         isDragging={isDragging}
-        title="Drag right to expand Control Plane • Double-click to expand"
+        title="Drag right to expand sidebar • Double-click to toggle"
       />
     </aside>
   );

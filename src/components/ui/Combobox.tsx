@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, Search, Check, X } from 'lucide-react';
+import { ChevronDown, Search, Check, X, Loader2 } from 'lucide-react';
 
 export interface ComboBoxOption<T = string> {
   value: T;
@@ -17,6 +17,8 @@ export interface ComboBoxProps<T = string> {
   searchPlaceholder?: string;
   disabled?: boolean;
   error?: boolean;
+  loading?: boolean;
+  onOpen?: () => void;
   style?: React.CSSProperties;
 }
 
@@ -29,6 +31,8 @@ export function ComboBox<T extends string = string>({
   searchPlaceholder = 'Type to search...',
   disabled = false,
   error = false,
+  loading = false,
+  onOpen,
   style
 }: ComboBoxProps<T>): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,6 +60,7 @@ export function ComboBox<T extends string = string>({
       (opt) =>
         opt.label.toLowerCase().includes(q) ||
         (opt.sublabel && opt.sublabel.toLowerCase().includes(q)) ||
+        (opt.badge && opt.badge.toLowerCase().includes(q)) ||
         String(opt.value).toLowerCase().includes(q)
     );
   }, [normalizedOptions, searchQuery]);
@@ -77,6 +82,7 @@ export function ComboBox<T extends string = string>({
       const next = !prev;
       if (next) {
         setSearchQuery('');
+        onOpen?.();
         setTimeout(() => inputRef.current?.focus(), 50);
       }
       return next;
@@ -197,7 +203,12 @@ export function ComboBox<T extends string = string>({
 
           {/* Options List */}
           <div style={{ maxHeight: 180, overflowY: 'auto', padding: '2px 0' }}>
-            {filteredOptions.length === 0 ? (
+            {loading ? (
+              <div style={{ padding: '16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 11, color: '#4f46e5' }}>
+                <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                <span>Loading real data from database...</span>
+              </div>
+            ) : filteredOptions.length === 0 ? (
               <div style={{ padding: '8px 12px', fontSize: 10.5, color: '#94a3b8', textAlign: 'center' }}>
                 No options found
               </div>
@@ -227,9 +238,16 @@ export function ComboBox<T extends string = string>({
                     }}
                   >
                     <div>
-                      <p style={{ margin: 0, fontWeight: isSelected ? 700 : 500, fontSize: 11, color: isSelected ? '#1d4ed8' : '#0f172a' }}>
-                        {opt.label}
-                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <p style={{ margin: 0, fontWeight: isSelected ? 700 : 500, fontSize: 11, color: isSelected ? '#1d4ed8' : '#0f172a' }}>
+                          {opt.label}
+                        </p>
+                        {opt.badge && (
+                          <span style={{ fontSize: 9.5, padding: '1px 5px', borderRadius: 4, backgroundColor: '#f1f5f9', color: '#475569', fontWeight: 600 }}>
+                            {opt.badge}
+                          </span>
+                        )}
+                      </div>
                       {opt.sublabel && (
                         <p style={{ margin: '1px 0 0 0', fontSize: 9.5, color: '#64748b' }}>
                           {opt.sublabel}

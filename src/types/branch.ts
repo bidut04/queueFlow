@@ -1,5 +1,7 @@
 import type { BranchStatusType } from './dashboard';
 
+export type BranchStatus = BranchStatusType | 'Active' | 'Inactive';
+
 export interface Branch {
   id: string;
   name: string;
@@ -9,6 +11,6 @@ export interface Branch {
   activeCounters: number;
   rating: number;
   avgWaitTime: string;
-  status: BranchStatusType;
+  status: BranchStatus;
   todayTotalBookings: number;
 }

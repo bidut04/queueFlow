@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   UserCheck,
   Plus,
@@ -17,6 +17,7 @@ import {
 import { GlobalTable } from '../components/table/GlobalTable';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { Combobox, type ComboBoxOption } from '../components/ui/Combobox';
 import type { TableColumn } from '../types/table';
 import type { Employee } from '../types/employee';
 import {
@@ -24,7 +25,10 @@ import {
   useCreateEmployee,
   useUpdateEmployee,
   useDeleteEmployee,
-} from '../api/hooks/employeeHooks';
+  useRoles,
+  useDepartments,
+  useBranches,
+} from '../api/hooks';
 
 const DEFAULT_AVATARS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
@@ -56,6 +60,38 @@ export const EmployeesPage: React.FC = () => {
     branch: 'Main Branch',
     status: 'Active' as Employee['status']
   });
+
+  // Client-Side Caching (React Query)
+  // Endpoints (/roles, /departments, /branches) are fetched once when navigating to the module
+  // and cached globally in memory. On dropdown clicks, data is already available instantly!
+  const { data: roles = [], isLoading: isRolesLoading } = useRoles();
+  const { data: departments = [], isLoading: isDepartmentsLoading } = useDepartments();
+  const { data: branches = [], isLoading: isBranchesLoading } = useBranches();
+
+  const roleOptions = useMemo<ComboBoxOption<string>[]>(() => {
+    return roles.map((r) => ({
+      value: r.roleName,
+      label: r.roleName,
+      sublabel: r.roleCode,
+      badge: r.level,
+    }));
+  }, [roles]);
+
+  const departmentOptions = useMemo<ComboBoxOption<string>[]>(() => {
+    return departments.map((d) => ({
+      value: d.deptName,
+      label: d.deptName,
+      sublabel: d.branch,
+    }));
+  }, [departments]);
+
+  const branchOptions = useMemo<ComboBoxOption<string>[]>(() => {
+    return branches.map((b) => ({
+      value: b.name,
+      label: b.name,
+      sublabel: b.location,
+    }));
+  }, [branches]);
 
   // Toast notification
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -107,14 +143,26 @@ export const EmployeesPage: React.FC = () => {
     e.preventDefault();
     if (!employeeForm.name.trim() || !employeeForm.email.trim()) return;
 
+    const selectedBranchObj = branches.find((b) => b.id === employeeForm.branch || b.name === employeeForm.branch);
+    const selectedRoleObj = roles.find((r) => r.id === employeeForm.role || r.roleName === employeeForm.role || r.roleCode === employeeForm.role);
+
+    const payload = {
+      ...employeeForm,
+      employeeCode: employeeForm.employeeId,
+      branch: selectedBranchObj?.name || employeeForm.branch,
+      locationId: selectedBranchObj?.id,
+      role: selectedRoleObj?.roleName || employeeForm.role,
+      roleId: selectedRoleObj?.id,
+    };
+
     if (editingEmployee) {
       updateEmployeeMutation.mutate({
         id: editingEmployee.id,
-        ...employeeForm
+        ...payload,
       });
       showToast(`Employee "${employeeForm.name}" updated successfully!`);
     } else {
-      createEmployeeMutation.mutate(employeeForm);
+      createEmployeeMutation.mutate(payload);
       showToast(`New Employee ID "${employeeForm.employeeId}" created successfully!`);
     }
     setShowEmployeeForm(false);
@@ -400,55 +448,46 @@ export const EmployeesPage: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ flex: '1 1 130px', minWidth: 110 }}>
+            <div style={{ flex: '1 1 140px', minWidth: 120 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                Assigned Role
+                Assigned Role <span style={{ color: '#ef4444' }}>*</span>
               </label>
-              <select
+              <Combobox
+                options={roleOptions}
                 value={employeeForm.role}
-                onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.target.value as Employee['role'] })}
-                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12, outline: 'none', backgroundColor: '#ffffff' }}
-              >
-                <option value="Staff">Staff</option>
-                <option value="Branch Manager">Branch Manager</option>
-                <option value="Doctor">Doctor</option>
-                <option value="Officer">Officer</option>
-                <option value="Super Admin">Super Admin</option>
-              </select>
+                onChange={(val) => setEmployeeForm({ ...employeeForm, role: val as Employee['role'] })}
+                loading={isRolesLoading}
+                placeholder="Select role..."
+                searchPlaceholder="Search role..."
+              />
+            </div>
+
+            <div style={{ flex: '1 1 150px', minWidth: 130 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                Department <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <Combobox
+                options={departmentOptions}
+                value={employeeForm.department}
+                onChange={(val) => setEmployeeForm({ ...employeeForm, department: val })}
+                loading={isDepartmentsLoading}
+                placeholder="Select department..."
+                searchPlaceholder="Search department..."
+              />
             </div>
 
             <div style={{ flex: '1 1 140px', minWidth: 120 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                Department
+                Assigned Branch <span style={{ color: '#ef4444' }}>*</span>
               </label>
-              <select
-                value={employeeForm.department}
-                onChange={(e) => setEmployeeForm({ ...employeeForm, department: e.target.value })}
-                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12, outline: 'none', backgroundColor: '#ffffff' }}
-              >
-                <option value="General Operations">General Operations</option>
-                <option value="KYC & Verification">KYC & Verification</option>
-                <option value="Cash & Teller">Cash & Teller</option>
-                <option value="Loan Operations">Loan Operations</option>
-                <option value="Medical & Healthcare">Medical & Healthcare</option>
-              </select>
-            </div>
-
-            <div style={{ flex: '1 1 130px', minWidth: 110 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                Assigned Branch
-              </label>
-              <select
+              <Combobox
+                options={branchOptions}
                 value={employeeForm.branch}
-                onChange={(e) => setEmployeeForm({ ...employeeForm, branch: e.target.value })}
-                style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12, outline: 'none', backgroundColor: '#ffffff' }}
-              >
-                <option value="Main Branch">Main Branch</option>
-                <option value="Gulshan Branch">Gulshan Branch</option>
-                <option value="Dhanmondi Branch">Dhanmondi Branch</option>
-                <option value="Uttara Branch">Uttara Branch</option>
-                <option value="Mirpur Branch">Mirpur Branch</option>
-              </select>
+                onChange={(val) => setEmployeeForm({ ...employeeForm, branch: val })}
+                loading={isBranchesLoading}
+                placeholder="Select branch..."
+                searchPlaceholder="Search branch..."
+              />
             </div>
 
             <div style={{ flex: '1 1 110px', minWidth: 90 }}>

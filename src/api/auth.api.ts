@@ -1,4 +1,4 @@
-import { api, getAuthToken } from './client';
+import { api, getAuthToken, tryRefreshToken } from './client';
 
 export interface LoginCredentials {
   email: string;
@@ -34,6 +34,8 @@ export interface LoginResponse {
 
 export interface AuthUserInfo {
   email: string;
+  name?: string;
+  avatar?: string;
   role: string;
   userType?: string;
   isSuperAdmin: boolean;
@@ -111,6 +113,10 @@ export const authApi = {
     return response;
   },
 
+  refreshToken: async (): Promise<string | null> => {
+    return await tryRefreshToken();
+  },
+
   logout: async (): Promise<void> => {
     try {
       await api.post('/auth/logout', {});
@@ -124,6 +130,53 @@ export const authApi = {
       localStorage.removeItem('qf_org_admin_user');
       window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     }
+  },
+
+  getProfile: async (): Promise<AuthUserInfo> => {
+    try {
+      const res = await api.get<{ success: boolean; user: any }>('/auth/me');
+      const u = (res as any)?.user || res;
+      if (u) {
+        const current = authApi.getCurrentUser() || ({} as AuthUserInfo);
+        const merged: AuthUserInfo = {
+          ...current,
+          email: u.email || current.email,
+          name: u.name || current.name,
+          avatar: u.avatar || current.avatar,
+          role: u.role || current.role,
+          userType: u.userType || current.userType,
+          isSuperAdmin: u.isSuperAdmin ?? current.isSuperAdmin,
+          loginTime: current.loginTime || new Date().toISOString(),
+          tenants: u.tenants || current.tenants || [],
+        };
+        localStorage.setItem(USER_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('auth:profile-updated', { detail: merged }));
+        return merged;
+      }
+    } catch {
+      // fallback
+    }
+    return authApi.getCurrentUser()!;
+  },
+
+  updateProfile: async (data: { name?: string; email?: string; avatar?: string }): Promise<AuthUserInfo> => {
+    const res = await api.patch<{ success: boolean; user: any }>('/auth/profile', data);
+    const u = (res as any)?.user || res;
+    const current = authApi.getCurrentUser() || ({} as AuthUserInfo);
+    const merged: AuthUserInfo = {
+      ...current,
+      email: data.email || u?.email || current.email,
+      name: data.name !== undefined ? data.name : (u?.name || current.name),
+      avatar: data.avatar !== undefined ? data.avatar : (u?.avatar || current.avatar),
+      role: u?.role || current.role,
+      userType: u?.userType || current.userType,
+      isSuperAdmin: u?.isSuperAdmin ?? current.isSuperAdmin,
+      loginTime: current.loginTime || new Date().toISOString(),
+      tenants: u?.tenants || current.tenants || [],
+    };
+    localStorage.setItem(USER_KEY, JSON.stringify(merged));
+    window.dispatchEvent(new CustomEvent('auth:profile-updated', { detail: merged }));
+    return merged;
   },
 
   getCurrentUser: (): AuthUserInfo | null => {
@@ -142,16 +195,32 @@ export const authApi = {
 
   isSuperAdmin: (): boolean => {
     if (!authApi.isAuthenticated()) return false;
+    const token = getAuthToken();
+    let tokenRole = '';
+    if (token) {
+      try {
+        const payloadBase64 = token.split('.')[1];
+        if (payloadBase64) {
+          const payload = JSON.parse(atob(payloadBase64));
+          tokenRole = payload.role || '';
+        }
+      } catch {
+        // ignore
+      }
+    }
     const user = authApi.getCurrentUser();
-    if (!user) {
+    if (!user && !tokenRole) {
       return false;
     }
     return Boolean(
-      user.isSuperAdmin ||
-      user.role === 'SUPER_ADMIN' ||
-      user.role === 'PLATFORM_OWNER' ||
-      user.role === 'PLATFORM_ADMIN' ||
-      user.userType === 'PLATFORM_SUPER_ADMIN'
+      user?.isSuperAdmin ||
+      user?.role === 'SUPER_ADMIN' ||
+      user?.role === 'PLATFORM_OWNER' ||
+      user?.role === 'PLATFORM_ADMIN' ||
+      user?.userType === 'PLATFORM_SUPER_ADMIN' ||
+      tokenRole === 'PLATFORM_OWNER' ||
+      tokenRole === 'PLATFORM_ADMIN' ||
+      tokenRole === 'SUPER_ADMIN'
     );
   },
 

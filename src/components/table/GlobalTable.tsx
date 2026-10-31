@@ -48,7 +48,8 @@ export function GlobalTable<T>({
   headerActions,
   filterBar,
   emptyStateMessage = 'No records found',
-  loading = false
+  loading = false,
+  exportPermissions
 }: GlobalTableProps<T>): ReactNode {
   const [globalFilter, setGlobalFilter] = useState<string>('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -460,6 +461,7 @@ export function GlobalTable<T>({
           onPrint={handlePrint}
           onOpenPdfModal={() => setIsPdfModalOpen(true)}
           onOpenColumnsModal={() => setIsColumnModalOpen(true)}
+          permissions={exportPermissions}
         />
       </div>
 

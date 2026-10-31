@@ -6,6 +6,7 @@ export * from './platformHooks';
 export * from './branchHooks';
 export * from './departmentHooks';
 export * from './serviceHooks';
+export * from './categoryHooks';
 export * from './roleHooks';
 export * from './associationHooks';
 export * from './formHooks';

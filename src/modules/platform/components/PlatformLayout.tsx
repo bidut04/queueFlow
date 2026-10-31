@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { platformStore } from '../services/platformState';
 import type { PlatformPageId, Organization } from '../types/platform';
 import { PlatformHeader } from './PlatformHeader';
-import { PlatformSidebar } from './PlatformSidebar';
+import { Sidebar } from '../../../components/layout/Sidebar';
+import type { NavItem } from '../../../types/navigation';
 import { TenantContextBanner } from './TenantContextBanner';
+import { authApi } from '../../../api/auth.api';
 
 import { PlatformDashboard } from '../pages/PlatformDashboard';
 import { OrganizationsPage } from '../pages/OrganizationsPage';
@@ -65,8 +67,31 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
   const [activeTab, setActiveTab] = useState<PlatformPageId>(initialUrlState.tab);
   const [selectedOrgId, setSelectedOrgId] = useState<string | undefined>(initialUrlState.orgId);
   const [activeTenantContext, setActiveTenantContext] = useState<Organization | null>(platformStore.activeTenantContext);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(() =>
+    platformStore.organizations.filter((o) => o.status === 'PENDING').length
+  );
 
   useEffect(() => {
+    return platformStore.subscribe(() => {
+      setPendingApprovalsCount(platformStore.organizations.filter((o) => o.status === 'PENDING').length);
+    });
+  }, []);
+
+  const platformNavItems: NavItem[] = [
+    { id: 'overview', label: 'Overview', iconName: 'overview' },
+    { id: 'organizations', label: 'Organizations', iconName: 'organizations' },
+    { id: 'approvals', label: 'Registration Approvals', iconName: 'approvals', badgeCount: pendingApprovalsCount },
+    { id: 'users', label: 'Platform Users', iconName: 'users' },
+    { id: 'subscriptions', label: 'Subscriptions / Plans', iconName: 'subscriptions' },
+    { id: 'system-health', label: 'System Health', iconName: 'system-health' },
+    { id: 'shards', label: 'Shards Management', iconName: 'shards' },
+    { id: 'migrations', label: 'Tenant Migrations', iconName: 'migrations' },
+    { id: 'audit', label: 'Platform Audit Logs', iconName: 'audit' },
+    { id: 'settings', label: 'Platform Settings', iconName: 'settings' }
+  ];
+
+  useEffect(() => {
+    if (!authApi.isSuperAdmin()) return;
     platformStore.loadFromBackend();
     return platformStore.subscribe(() => {
       setActiveTenantContext(platformStore.activeTenantContext);
@@ -190,18 +215,22 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
       />
 
       {/* Main Body with Sidebar + Content */}
-      <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0, height: 'calc(100vh - 54px)', overflow: 'hidden' }}>
-        <PlatformSidebar activeTab={activeTab} onSelectTab={(t) => handleNavigate(t)} />
+      <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0, overflow: 'hidden', alignItems: 'stretch' }}>
+        <Sidebar
+          activePage={activeTab}
+          onSelectPage={(t) => handleNavigate(t as PlatformPageId)}
+          items={platformNavItems}
+        />
 
-        <main
+        <main className="qf-platform-main"
           style={{
             flex: 1,
             width: '100%',
-            height: '100%',
-            minHeight: '100%',
+            minHeight: 0,
+            maxHeight: '100%',
             backgroundColor: '#f8fafc',
             color: '#0f172a',
-            padding: '12px 16px 24px 16px',
+            padding: '16px 20px 32px 20px',
             overflowY: 'auto',
             minWidth: 0,
             display: 'flex',
@@ -211,7 +240,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
           <div
             key={activeTab}
             className="qf-page-transition"
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100%' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
           >
             {renderActivePage()}
           </div>

@@ -21,9 +21,45 @@ export interface ApiResponse<T = unknown> {
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
+  skipAuthRedirect?: boolean;
+  _isRetry?: boolean;
 }
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
+export const tryRefreshToken = async (): Promise<string | null> => {
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const newToken = json?.data?.accessToken || json?.accessToken;
+      if (newToken) {
+        localStorage.setItem('queflow_token', newToken);
+        localStorage.setItem('access_token', newToken);
+        return newToken;
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+};
 
 export const getAuthToken = (): string | null => {
   try {
@@ -55,14 +91,27 @@ export const getAuthToken = (): string | null => {
 
 export const getActiveTenantId = (): string => {
   try {
-    return (
-      localStorage.getItem('queflow_active_tenant') ||
-      localStorage.getItem('tenant_id') ||
-      'tenant_bank_a'
-    );
+    const activeTenant = localStorage.getItem('queflow_active_tenant');
+    if (activeTenant) return activeTenant;
+
+    const storedUser = localStorage.getItem('queflow_user');
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+      if (parsed.tenants && parsed.tenants.length > 0) {
+        const tenantId = parsed.tenants[0].tenantId || parsed.tenants[0].id;
+        if (tenantId) {
+          localStorage.setItem('queflow_active_tenant', tenantId);
+          return tenantId;
+        }
+      }
+    }
+
+    const legacyTenant = localStorage.getItem('tenant_id');
+    if (legacyTenant) return legacyTenant;
   } catch {
-    return 'tenant_bank_a';
+    // ignore
   }
+  return '';
 };
 
 export const apiClient = async <T = unknown>(
@@ -102,6 +151,7 @@ export const apiClient = async <T = unknown>(
 
   try {
     const response = await fetch(url, {
+      credentials: customConfig.credentials || 'include',
       ...customConfig,
       headers,
     });
@@ -111,17 +161,32 @@ export const apiClient = async <T = unknown>(
     const data = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
-      if (response.status === 401 && !url.includes('/auth/login')) {
-        try {
-          localStorage.removeItem('queflow_token');
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('token');
-          localStorage.removeItem('queflow_user');
-        } catch {
-          // ignore storage error
+      if (response.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/refresh') && !options._isRetry) {
+        // Attempt silent refresh
+        const refreshedToken = await tryRefreshToken();
+        if (refreshedToken) {
+          const retryHeaders = new Headers(customHeaders);
+          retryHeaders.set('Authorization', `Bearer ${refreshedToken}`);
+          return apiClient<T>(endpoint, {
+            ...options,
+            headers: retryHeaders,
+            _isRetry: true,
+          });
         }
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('login')) {
-          window.location.href = '/login';
+
+        // If silent refresh failed and skipAuthRedirect is not enabled, redirect to login
+        if (!options.skipAuthRedirect) {
+          try {
+            localStorage.removeItem('queflow_token');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('token');
+            localStorage.removeItem('queflow_user');
+          } catch {
+            // ignore storage error
+          }
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('login')) {
+            window.location.href = '/login';
+          }
         }
       }
 
