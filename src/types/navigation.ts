@@ -21,7 +21,8 @@ export type NavPageId =
   | 'platform'
   | 'org-portal'
   | 'setup-password'
-  | 'queue-portal';
+  | 'queue-portal'
+  | 'customize-table';
 
 export interface NavSubItem {
   id: NavPageId | string;

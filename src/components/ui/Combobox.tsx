@@ -123,11 +123,12 @@ export function ComboBox<T extends string = string>({
         onClick={handleToggle}
         style={{
           width: '100%',
-          padding: '5px 8px',
+          minHeight: 'var(--qf-combobox-height, 32px)',
+          padding: 'var(--qf-combobox-padding, 5px 8px)',
           backgroundColor: disabled ? '#f8fafc' : '#ffffff',
           border: `1px solid ${error ? '#ef4444' : isOpen ? '#4f46e5' : '#cbd5e1'}`,
-          borderRadius: 5,
-          fontSize: 11,
+          borderRadius: 'var(--qf-combobox-radius, 6px)',
+          fontSize: 'var(--qf-combobox-font-size, 11px)',
           color: selectedOption ? '#0f172a' : '#94a3b8',
           cursor: disabled ? 'not-allowed' : 'pointer',
           display: 'flex',
@@ -156,7 +157,7 @@ export function ComboBox<T extends string = string>({
             marginTop: 4,
             backgroundColor: '#ffffff',
             border: '1px solid #cbd5e1',
-            borderRadius: 6,
+            borderRadius: 'var(--qf-combobox-radius, 6px)',
             boxShadow: '0 10px 25px rgba(15, 23, 42, 0.15)',
             zIndex: 1000,
             overflow: 'hidden'

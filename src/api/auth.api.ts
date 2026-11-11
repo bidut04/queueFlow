@@ -1,4 +1,5 @@
 import { api, getAuthToken, tryRefreshToken } from './client';
+import { queryClient } from './queryClient';
 
 export interface LoginCredentials {
   email: string;
@@ -62,6 +63,7 @@ export const authApi = {
     });
 
     if (response?.accessToken) {
+      queryClient.clear();
       localStorage.setItem(TOKEN_KEY, response.accessToken);
       localStorage.setItem('access_token', response.accessToken);
 
@@ -123,11 +125,18 @@ export const authApi = {
     } catch {
       // Continue cleanup on network error
     } finally {
+      queryClient.clear();
+      queryClient.removeQueries();
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem('access_token');
       localStorage.removeItem('token');
       localStorage.removeItem(USER_KEY);
       localStorage.removeItem('qf_org_admin_user');
+      localStorage.removeItem('queflow_active_tenant');
+      localStorage.removeItem('qf_active_tenant');
+      localStorage.removeItem('qf_user_credentials');
+      localStorage.removeItem('qf_password_invites');
+      sessionStorage.clear();
       window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     }
   },

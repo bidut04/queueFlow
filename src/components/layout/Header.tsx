@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, PanelLeft, LogOut, Shield, Settings, Building2, ChevronDown, UserCircle } from 'lucide-react';
+import { Search, Bell, PanelLeft, LogOut, Shield, Settings, Building2, ChevronDown, UserCircle, Sun, Moon, Eye, Palette } from 'lucide-react';
 import { Tooltip } from '../ui/tooltip';
 import { authApi } from '../../api/auth.api';
 import { orgAdminAuthStore } from '../../modules/platform/services/orgAdminAuthStore';
 import { LiveSocketIndicator } from '../ui/LiveSocketIndicator';
 import { DatePickerDropdown } from '../ui/DatePickerDropdown';
 import { UserProfileModal } from '../profile/UserProfileModal';
+import { useThemeCustomization } from '../../context/ThemeCustomizationContext';
 
 export interface HeaderProps {
   userName?: string;
@@ -27,8 +28,12 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isEyeComfortOpen, setIsEyeComfortOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(propSelectedDate || new Date());
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const eyeComfortRef = useRef<HTMLDivElement>(null);
+
+  const { customizations, updateCustomization, isDark } = useThemeCustomization();
 
   const [profileState, setProfileState] = useState<any>(authApi.getCurrentUser());
   const currentUser = profileState || authApi.getCurrentUser();
@@ -79,6 +84,18 @@ export const Header: React.FC<HeaderProps> = ({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isDropdownOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (eyeComfortRef.current && !eyeComfortRef.current.contains(event.target as Node)) {
+        setIsEyeComfortOpen(false);
+      }
+    };
+    if (isEyeComfortOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEyeComfortOpen]);
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
@@ -191,6 +208,155 @@ export const Header: React.FC<HeaderProps> = ({
           }}
           align="right"
         />
+
+        {/* Eye Comfort Mode Warmth Slider Control */}
+        <div ref={eyeComfortRef} style={{ position: 'relative' }}>
+          <Tooltip content={`Eye Comfort: ${customizations.eyeComfortEnabled ? `${customizations.eyeComfortLevel}% warmth` : 'Off'}`} side="bottom">
+            <button
+              type="button"
+              onClick={() => setIsEyeComfortOpen((prev) => !prev)}
+              aria-label="Adjust Eye Comfort"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                backgroundColor: customizations.eyeComfortEnabled ? '#fef3c7' : '#f8fafc',
+                border: `1px solid ${customizations.eyeComfortEnabled ? '#fde68a' : '#e2e8f0'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Eye
+                size={15}
+                color={customizations.eyeComfortEnabled ? '#d97706' : '#64748b'}
+              />
+            </button>
+          </Tooltip>
+
+          {/* Eye Comfort Sliding Warmth Popover */}
+          {isEyeComfortOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: 0,
+                width: 260,
+                backgroundColor: '#ffffff',
+                borderRadius: 12,
+                boxShadow: '0 12px 30px -4px rgba(15, 23, 42, 0.2), 0 4px 12px -2px rgba(15, 23, 42, 0.08)',
+                border: '1px solid #e2e8f0',
+                padding: '12px 14px',
+                zIndex: 1000,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Eye size={14} color="#d97706" />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>Eye Comfort Mode</span>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={customizations.eyeComfortEnabled}
+                    onChange={(e) => updateCustomization('eyeComfortEnabled', e.target.checked)}
+                    style={{ width: 14, height: 14, cursor: 'pointer', accentColor: '#d97706' }}
+                  />
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: customizations.eyeComfortEnabled ? '#d97706' : '#94a3b8' }}>
+                    {customizations.eyeComfortEnabled ? 'ON' : 'OFF'}
+                  </span>
+                </label>
+              </div>
+
+              <p style={{ fontSize: 10.5, color: '#64748b', margin: '0 0 10px 0', lineHeight: 1.35 }}>
+                Warm amber filter reduces eye strain during long hours and late-night sessions.
+              </p>
+
+              {/* Slider for Warmth adjustment */}
+              <div style={{ opacity: customizations.eyeComfortEnabled ? 1 : 0.45, transition: 'opacity 0.15s ease' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, color: '#475569' }}>Warmth Level</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#d97706' }}>
+                    {customizations.eyeComfortLevel}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  disabled={!customizations.eyeComfortEnabled}
+                  value={customizations.eyeComfortLevel}
+                  onChange={(e) => updateCustomization('eyeComfortLevel', parseInt(e.target.value, 10))}
+                  style={{
+                    width: '100%',
+                    height: 5,
+                    borderRadius: 3,
+                    accentColor: '#d97706',
+                    cursor: customizations.eyeComfortEnabled ? 'pointer' : 'not-allowed',
+                  }}
+                />
+                {/* Presets */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, marginTop: 8 }}>
+                  {[
+                    { label: 'Mild', val: 25 },
+                    { label: 'Medium', val: 50 },
+                    { label: 'Night', val: 80 },
+                  ].map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      disabled={!customizations.eyeComfortEnabled}
+                      onClick={() => updateCustomization('eyeComfortLevel', p.val)}
+                      style={{
+                        flex: 1,
+                        padding: '3px 0',
+                        fontSize: 9.5,
+                        fontWeight: 700,
+                        borderRadius: 4,
+                        border: '1px solid #fde68a',
+                        backgroundColor: customizations.eyeComfortLevel === p.val ? '#fef3c7' : '#fffbeb',
+                        color: '#b45309',
+                        cursor: customizations.eyeComfortEnabled ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {p.label} {p.val}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Dark Theme Toggle */}
+        <Tooltip content={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'} side="bottom">
+          <button
+            type="button"
+            onClick={() => updateCustomization('themeMode', isDark ? 'light' : 'dark')}
+            aria-label="Toggle Dark Mode"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              backgroundColor: isDark ? '#1e293b' : '#f8fafc',
+              border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {isDark ? (
+              <Sun size={15} color="#fbbf24" />
+            ) : (
+              <Moon size={15} color="#475569" />
+            )}
+          </button>
+        </Tooltip>
 
         {/* Notification Bell with Badge */}
         <div
@@ -408,6 +574,31 @@ export const Header: React.FC<HeaderProps> = ({
                     <span>Super Admin Platform</span>
                   </button>
                 )}
+
+                <button
+                  onClick={() => handleNavigateTo('customize-table')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '8px 10px',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: '#7c3aed',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f3ff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <Palette size={14} color="#8b5cf6" />
+                  <span>Customize Table & Appearance</span>
+                </button>
 
                 <button
                   onClick={() => handleNavigateTo('settings')}

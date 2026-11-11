@@ -28,7 +28,9 @@ import {
   CreditCard,
   Activity,
   Database,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Palette,
+  SlidersHorizontal
 } from 'lucide-react';
 import type { NavPageId, NavItem } from '../../types/navigation';
 import { Tooltip } from '../ui/tooltip';
@@ -77,6 +79,14 @@ const NAV_ITEMS: NavItem[] = [
     iconName: 'association',
     subItems: [
       { id: 'employee-department-association', label: 'Emp Dept Association', iconName: 'employee-department-association' }
+    ]
+  },
+  {
+    id: 'customize',
+    label: 'Customize',
+    iconName: 'customize',
+    subItems: [
+      { id: 'customize-table', label: 'Customize Table', iconName: 'customize-table' }
     ]
   },
   { id: 'settings', label: 'Settings', iconName: 'settings' }
@@ -175,7 +185,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage, item
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     master: true,
-    association: true
+    association: true,
+    customize: true
   });
 
   // DOM Refs for GSAP
@@ -524,6 +535,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage, item
         return <Layers size={size} />;
       case 'reports':
         return <BarChart3 size={size} />;
+      case 'customize':
+        return <Palette size={size} color="#c084fc" />;
+      case 'customize-table':
+        return <SlidersHorizontal size={size} color="#38bdf8" />;
       case 'settings':
       default:
         return <Settings size={size} />;
@@ -554,7 +569,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, onSelectPage, item
         width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
         minWidth: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth,
         maxWidth: MAX_EXPANDED_WIDTH,
-        backgroundColor: '#0f172a', // Preserves exact present sidebar background color
+        backgroundColor: 'var(--bg-sidebar, #0f172a)', // Dynamic Sidebar Color
         color: '#ffffff',
         display: 'flex',
         flexDirection: 'column',

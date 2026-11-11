@@ -43,25 +43,9 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   initialWalkIn = false,
   onSaveAppointment,
 }) => {
-  if (!isOpen) return null;
-
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<{ name: string; phone?: string; email?: string } | null>(null);
-  const [isWalkIn, setIsWalkIn] = useState<boolean>(initialWalkIn);
-  const [isAddingNewCustomer, setIsAddingNewCustomer] = useState<boolean>(false);
-
-  // Form Fields
-  const [newCustName, setNewCustName] = useState('');
-  const [newCustPhone, setNewCustPhone] = useState('');
-  const [newCustEmail, setNewCustEmail] = useState('');
-
-  const [orgId, setOrgId] = useState(selectedOrgId);
-  const [branchId, setBranchId] = useState(selectedBranchId);
-  const [serviceId, setServiceId] = useState(services[0]?.id || '');
-  const [staffId, setStaffId] = useState(preselectedStaff?.id || staffList[0]?.id || '');
-  const [timeHour, setTimeHour] = useState<number>(preselectedHour || 11);
-  const [date, setDate] = useState('2026-08-29');
   const [notes, setNotes] = useState('');
+
+  if (!isOpen) return null;
 
   // Filtered branches for current org
   const availableBranches = branches.filter((b) => b.orgId === orgId);

@@ -410,14 +410,8 @@ class PlatformStore {
     target.isUsed = true;
     localStorage.setItem('qf_password_invites', JSON.stringify(invites));
 
-    try {
-      const storedCreds = localStorage.getItem('qf_user_credentials') || '{}';
-      const parsedCreds = JSON.parse(storedCreds);
-      parsedCreds[target.email.toLowerCase()] = password;
-      localStorage.setItem('qf_user_credentials', JSON.stringify(parsedCreds));
-    } catch {
-      // ignore
-    }
+    // Never store plaintext credentials in localStorage
+    localStorage.removeItem('qf_user_credentials');
 
     this.notify();
     return { success: true, message: 'Password configured successfully!', invite: target };

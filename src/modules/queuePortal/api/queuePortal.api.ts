@@ -356,23 +356,7 @@ export const queuePortalApi = {
       };
     } catch (err) {
       console.error('Real booking API call failed:', err);
-      const fallbackNum = `K0${Math.floor(10 + Math.random() * 89)}`;
-      return {
-        tokenNumber: fallbackNum,
-        tenantId: params.tenantId,
-        tenantName: params.tenantName,
-        serviceId: params.serviceId,
-        serviceName: params.serviceName,
-        branchId: params.branchId,
-        branchName: params.branchName,
-        branchAddress: params.branchAddress || 'Branch Counter',
-        timeSlot: params.timeSlot,
-        estWaitMinutes: 8,
-        peopleAhead: 2,
-        activeCounters: 2,
-        status: 'Waiting',
-        bookedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
+      throw err;
     }
   },
 

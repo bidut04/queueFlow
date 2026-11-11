@@ -181,11 +181,20 @@ export function GlobalTable<T>({
 
   // 2. Excel (CSV) Export
   const handleExportExcel = () => {
+    const sanitizeCsvCell = (val: unknown): string => {
+      let str = String(val ?? '');
+      // OWASP CSV Injection: Prefix formula characters with single quote
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = `'${str}`;
+      }
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
     const visibleCols = table.getVisibleFlatColumns();
-    const headers = visibleCols.map((c) => `"${columns.find((col) => col.key === c.id)?.header || c.id}"`).join(',');
+    const headers = visibleCols.map((c) => sanitizeCsvCell(columns.find((col) => col.key === c.id)?.header || c.id)).join(',');
     const rowsCsv = data.map((row) => {
       const rec = row as Record<string, unknown>;
-      return visibleCols.map((c) => `"${String(rec[c.id] ?? '').replace(/"/g, '""')}"`).join(',');
+      return visibleCols.map((c) => sanitizeCsvCell(rec[c.id])).join(',');
     }).join('\n');
 
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${rowsCsv}`;
@@ -204,6 +213,16 @@ export function GlobalTable<T>({
     window.print();
   };
 
+  // Helper to escape HTML characters in exports
+  const escapeHtml = (str: unknown): string => {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
   // 4. PDF Action (Triggers Print Window with custom settings)
   const executePDFExport = () => {
     setIsPdfModalOpen(false);
@@ -211,16 +230,16 @@ export function GlobalTable<T>({
     if (!printWindow) return;
 
     const visibleCols = table.getVisibleFlatColumns();
-    const headersHtml = visibleCols.map((c) => `<th>${columns.find((col) => col.key === c.id)?.header || c.id}</th>`).join('');
+    const headersHtml = visibleCols.map((c) => `<th>${escapeHtml(columns.find((col) => col.key === c.id)?.header || c.id)}</th>`).join('');
     const rowsHtml = data.map((row) => {
       const rec = row as Record<string, unknown>;
-      return `<tr>${visibleCols.map((c) => `<td>${String(rec[c.id] ?? '')}</td>`).join('')}</tr>`;
+      return `<tr>${visibleCols.map((c) => `<td>${escapeHtml(rec[c.id])}</td>`).join('')}</tr>`;
     }).join('');
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>${title || 'Export PDF Report'}</title>
+          <title>${escapeHtml(title || 'Export PDF Report')}</title>
           <style>
             body { font-family: sans-serif; padding: 24px; color: #1e293b; }
             .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 16px; }
@@ -233,7 +252,7 @@ export function GlobalTable<T>({
         <body>
           <div class="header-bar">
             <div>
-              <h2>${title || 'Data Report'}</h2>
+              <h2>${escapeHtml(title || 'Data Report')}</h2>
               ${pdfOptions.includeDate ? `<p style="font-size:11px;color:#64748b;margin-top:4px;">Generated on: ${new Date().toLocaleString()}</p>` : ''}
             </div>
             ${pdfOptions.includeLogo ? `<div style="font-weight:800;font-size:18px;color:#2563eb;">QueueFlow</div>` : ''}
@@ -292,7 +311,10 @@ export function GlobalTable<T>({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden relative w-full flex flex-col">
+    <div
+      className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden relative w-full flex flex-col"
+      style={{ borderRadius: 'var(--qf-table-radius, 12px)' }}
+    >
       {/* Toast notification */}
       {toastMessage && (
         <div style={{
@@ -477,7 +499,8 @@ export function GlobalTable<T>({
                       position: 'sticky',
                       top: 0,
                       zIndex: 20,
-                      backgroundColor: '#f8fafc',
+                      backgroundColor: 'var(--qf-table-header-bg, #f8fafc)',
+                      color: 'var(--qf-table-header-text, #475569)',
                       width: 38,
                       minWidth: 38,
                       textAlign: 'center',
@@ -518,8 +541,12 @@ export function GlobalTable<T>({
                           cursor: canSort ? 'pointer' : 'grab',
                           textAlign: customCol?.align || 'left',
                           width: header.getSize() || customCol?.width,
-                          color: isSorted ? '#2563eb' : '#475569',
-                          backgroundColor: isDragging ? '#e0e7ff' : isSorted ? '#eff6ff' : '#f8fafc',
+                          color: isSorted ? '#2563eb' : 'var(--qf-table-header-text, #475569)',
+                          backgroundColor: isDragging
+                            ? '#e0e7ff'
+                            : isSorted
+                              ? 'rgba(37,99,235,0.08)'
+                              : 'var(--qf-table-header-bg, #f8fafc)',
                           borderBottom: '1.5px solid #e2e8f0',
                           boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
                           fontWeight: isSorted ? 700 : 600,

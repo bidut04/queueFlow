@@ -36,6 +36,7 @@ const PlatformLayout = lazy(() => import('../../modules/platform/components/Plat
 const OrgAdminPortalPage = lazy(() => import('../../pages/OrgAdminPortalPage').then((m) => ({ default: m.OrgAdminPortalPage })));
 const SetupPasswordPage = lazy(() => import('../../pages/SetupPasswordPage').then((m) => ({ default: m.SetupPasswordPage })));
 const QueueBookingPortalPage = lazy(() => import('../../pages/QueueBookingPortalPage').then((m) => ({ default: m.QueueBookingPortalPage })));
+const CustomizeTablePage = lazy(() => import('../../pages/CustomizeTablePage').then((m) => ({ default: m.CustomizeTablePage })));
 
 const PageLoadingFallback: React.FC = () => <PageSkeleton />;
 
@@ -110,6 +111,7 @@ export const AppLayout: React.FC = () => {
       'org-portal',
       'setup-password',
       'queue-portal',
+      'customize-table',
     ];
     if (pathname === 'booking-portal' || pathname === 'booking') return 'queue-portal';
     return validPages.includes(pathname as NavPageId) ? (pathname as NavPageId) : 'dashboard';
@@ -240,6 +242,7 @@ export const AppLayout: React.FC = () => {
         'org-portal',
         'setup-password',
         'queue-portal',
+        'customize-table',
       ];
       setActivePage(validPages.includes(pathname as NavPageId) ? (pathname as NavPageId) : 'dashboard');
     };
@@ -439,6 +442,8 @@ export const AppLayout: React.FC = () => {
         return <ReportsPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'customize-table':
+        return <CustomizeTablePage />;
       default:
         return <DashboardPage onNavigate={(pageId) => handleSelectPage(pageId)} />;
     }
